@@ -255,7 +255,7 @@ async function loadFeed() {
     if (!events || events.length === 0) { feed.innerHTML = '<div class="loading">Событий пока нет...</div>'; return; }
     const maxPeriod = Math.max(...events.map(e => e.period));
     updateHeaderStats(events, maxPeriod);
-    let commentaryHtml = commentaryData.map(c => `<div class="event" style="border-left:3px solid ${c.priority ? '#f0c040' : '#58a6ff'};background:${c.priority ? 'rgba(240,192,64,0.08)' : 'rgba(88,166,255,0.05)'};margin-bottom:8px;"><div class="time">${c.time_ms || '—'}</div><div class="icon">${c.priority ? '🔥' : '💬'}</div><div class="event-body"><div class="event-title">${c.priority ? 'ВАЖНО' : 'КОММЕНТАРИЙ'}</div><div class="event-details">${c.text}</div><div class="assists" style="font-size:11px;">${c.author || 'Оператор'}, ${c.period}-й период</div></div></div>`).join('');
+    let commentaryHtml = commentaryData.map(c => `<div class="event" style="border-left:3px solid ${c.priority ? '#f0c040' : '#58a6ff'};background:${c.priority ? 'rgba(240,192,64,0.08)' : 'rgba(88,166,255,0.05)'};margin-bottom:8px;"><div class="time">${c.time_ms || '—'}</div><div class="icon">${c.priority ? '🔥' : '💬'}</div><div class="event-body"><div class="event-title">${c.priority ? 'ВАЖНО' : 'КОММЕНТАРИЙ'}</div><div class="event-details">${c.text.replace(/</g, "&lt;")}</div><div class="assists" style="font-size:11px;">${c.author || 'Оператор'}, ${c.period}-й период</div></div></div>`).join('');
     const eventsHtml = events.map(e => {
       const isGoal = e.type === "goal", isA = e.team_ab === "A", teamClass = isA ? "team-a-text" : "team-b-text", teamName = isA ? homeTeam : visitorTeam;
       let playerName = "";
