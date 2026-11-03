@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>КХЛ Live — Трансляции</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3; --muted: #8b949e; --home: #f85149; --visitor: #58a6ff; --live-bg: rgba(248,81,73,0.1); --win: #238636; --lose: #f85149; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Roboto Condensed', sans-serif; background: var(--bg); color: var(--text); padding: 20px 15px 60px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+  .container { width: 100%; max-width: 800px; }
+  .header { text-align: center; margin-bottom: 20px; }
+  .header h1 { font-size: 32px; font-weight: 900; text-transform: uppercase; color: #fff; }
+  .header h1 span { color: var(--home); }
+  
+  .main-btn { display: block; width: 100%; background: #238636; color: #fff; text-align: center; padding: 16px; border-radius: 12px; font-size: 18px; font-weight: 900; text-transform: uppercase; text-decoration: none; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(35,134,54,0.3); transition: all 0.2s; }
+  .main-btn.live { background: var(--home); box-shadow: 0 4px 15px rgba(248,81,73,0.3); }
+  .tabs { display: flex; justify-content: center; background: var(--card); border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border); }
+  .tab { padding: 12px 24px; cursor: pointer; font-size: 15px; font-weight: 700; color: var(--muted); text-transform: uppercase; flex: 1; text-align: center; border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--text); border-bottom-color: var(--text); }
+  .match-card { display: flex; align-items: center; justify-content: space-between; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; text-decoration: none; color: var(--text); transition: border-color 0.2s; }
+  .match-card:hover { border-color: #484f58; }
+  .match-card.is-live { border-color: var(--home); background: var(--live-bg); }
+  .mc-team { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .mc-team.away { justify-content: flex-end; text-align: right; }
+  .mc-logo { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+  .mc-name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mc-center { display: flex; flex-direction: column; align-items: center; min-width: 70px; padding: 0 10px; flex-shrink: 0; }
+  .mc-score { font-size: 22px; font-weight: 900; background: #000; padding: 2px 10px; border-radius: 6px; letter-spacing: 1px; }
+  .mc-status { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
+  .mc-status.live-text { color: var(--home); animation: pulse 2s infinite; }
+  @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+  .mc-date { font-size: 11px; color: var(--muted); text-align: right; width: 45px; flex-shrink: 0; }
+  .table-section { display: none; background: var(--card); border-radius: 10px; padding: 15px; overflow-x: auto; border: 1px solid var(--border); }
+  .table-section.active { display: block; }
+  .conf-title { font-size: 18px; font-weight: 900; margin-bottom: 10px; color: #fff; }
+  .standings { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; white-space: nowrap; }
+  .standings th { padding: 8px 4px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); }
+  .standings td { padding: 10px 4px; border-bottom: 1px solid #21262d; }
+  .standings tr:hover { background: #21262d; }
+  .st-team { text-align: left; display: flex; align-items: center; gap: 8px; min-width: 140px; }
+  .st-logo { width: 20px; height: 20px; object-fit: contain; }
+  .form-dots { display: flex; gap: 2px; justify-content: center; }
+  .f-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .f-w { background: var(--win); } .f-l { background: var(--lose); }
+
+  /* Бегущая строка */
+  .ticker-wrap { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #000; border-top: 1px solid #30363d; z-index: 99999; display: flex; overflow: hidden; align-items: center; }
+  .ticker-title { background: #f85149; color: #fff; font-weight: 900; padding: 0 15px; height: 100%; display: flex; align-items: center; z-index: 10; white-space: nowrap; }
+  .ticker { display: flex; align-items: center; white-space: nowrap; animation: ticker 180s linear infinite; padding-left: 100vw; }
+  .ticker:hover { animation-play-state: paused; }
+  .ticker-item { color: #e6edf3; font-size: 15px; font-weight: 700; text-decoration: none; padding-right: 40px; }
+  .ticker-item:hover { color: #58a6ff; }
+  @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header"><h1>КХЛ <span>LIVE</span></h1><p>Прямые трансляции и статистика</p></div>
+  <a href="#" id="main-btn" class="main-btn" style="display:none;">Загрузка...</a>
+  <div class="tabs">
+    <div class="tab active" onclick="switchMainTab('matches')">Матчи</div>
+    <div class="tab" onclick="switchMainTab('tables')">Таблицы</div>
+  </div>
+  <div id="tab-matches"><div id="matches-list"><div class="loading">Загрузка...</div></div></div>
+  <div id="tab-tables" class="table-section">
+    <div class="conf-title" style="color:#f85149;">Западная конференция</div>
+    <table class="standings" id="table-west"><thead></thead><tbody></tbody></table>
+    <div class="conf-title" style="margin-top:20px; color:#58a6ff;">Восточная конференция</div>
+    <table class="standings" id="table-east"><thead></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<div class="ticker-wrap">
+  <div class="ticker-title">НОВОСТИ</div>
+  <div class="ticker" id="ticker-content"><span class="ticker-item">Загрузка...</span></div>
+</div>
+
+<script>
+const SUPABASE = "https://xkjwomtycemjbmhjxnio.supabase.co";
+const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrandvbXR5Y2VtamJtaGp4bmlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3MTk1NTAsImV4cCI6MjEwNzI5NTU1MH0.TqNPgvxf_NfOjv0kU8fwtf5hDegYisVZPjjvX1iAdSs";
+const SUPABASE_STORAGE = "https://xkjwomtycemjbmhjxnio.supabase.co/storage/v1/object/public/logos/";
+const TEAM_LOGOS = { "Ак Барс": "53.png", "Адмирал": "418.png", "Амур": "54.png", "Автомобилист": "190.png", "Авангард": "34.png", "Барыс": "198.png", "Динамо М": "719.png", "Динамо Мн": "207.png", "Лада": "66.png", "Локомотив": "1.png", "Металлург Мг": "37.png", "Нефтехимик": "71.png", "Салават Юлаев": "38.png", "Северсталь": "56.png", "Сибирь": "29.png", "СКА": "24.png", "Спартак": "7.png", "Торпедо НН": "26.png", "Трактор": "25.png", "ХК Сочи": "451.png", "ЦСКА": "2.png", "Шанхай Дрэгонс": "568.png" };
+const WEST = ["Локомотив", "ЦСКА", "Шанхай Дрэгонс", "Торпедо НН", "Спартак", "Северсталь", "Динамо Мн", "СКА", "Динамо М", "ХК Сочи", "Лада"];
+const EAST = ["Металлург Мг", "Нефтехимик", "Ак Барс", "Амур", "Барыс", "Салават Юлаев", "Автомобилист", "Адмирал", "Трактор", "Авангард", "Сибирь"];
+
+async function sb(path) { try { const r = await fetch(`${SUPABASE}/rest/v1/${path}`, { headers: { "apikey": KEY, "Authorization": "Bearer " + KEY } }); return r.ok ? r.json() : null; } catch(e) { return null; } }
+function formatDate(d) { if(!d) return ""; const p = d.split("-"); return `${p[2]}.${p[1]}`; }
+function getLogoHtml(team) { return TEAM_LOGOS[team] ? `<img src="${SUPABASE_STORAGE}${TEAM_LOGOS[team]}" class="mc-logo" onerror="this.style.display='none'">` : ""; }
+
+function switchMainTab(tab) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.getElementById("tab-matches").style.display = "none"; document.getElementById("tab-tables").classList.remove("active");
+  if (tab === 'matches') { document.querySelectorAll(".tab")[0].classList.add("active"); document.getElementById("tab-matches").style.display = "block"; }
+  else { document.querySelectorAll(".tab")[1].classList.add("active"); document.getElementById("tab-tables").classList.add("active"); }
+}
+
+async function loadMatches() {
+  const TEAM_FULL = { "АВТ": "Автомобилист", "АКБ": "Ак Барс", "АДМ": "Адмирал", "АМР": "Амур", "АВГ": "Авангард", "БАР": "Барыс", "ДИН": "Динамо М", "ДМН": "Динамо Мн", "ЛАД": "Лада", "ЛОК": "Локомотив", "ММГ": "Металлург Мг", "НХК": "Нефтехимик", "САЛ": "Салават Юлаев", "СЕВ": "Северсталь", "СИБ": "Сибирь", "СКА": "СКА", "СПА": "Спартак", "ТОР": "Торпедо НН", "ТРК": "Трактор", "СОЧ": "ХК Сочи", "ЦСК": "ЦСКА", "ДРК": "Шанхай Дрэгонс", "ШДР": "Шанхай Дрэгонс" };
+  const list = document.getElementById("matches-list"), mainBtn = document.getElementById("main-btn");
+  try {
+    const matches = await sb(`matches?select=gameid,date,home,visitor,home_goals,visitor_goals,winner&order=date.desc,gameid.desc&limit=15`);
+    if (!matches || matches.length === 0) { list.innerHTML = '<div class="loading">Нет матчей в базе.</div>'; mainBtn.style.display = "none"; return; }
+    const today = new Date(), todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+    let activeMatch = matches.find(m => m.date === todayStr && m.winner === null) || matches[0];
+    let isLive = (activeMatch.date === todayStr && activeMatch.winner === null);
+    mainBtn.style.display = "block"; mainBtn.href = `live10.html?gameid=${activeMatch.gameid}`; mainBtn.className = isLive ? "main-btn live" : "main-btn";
+    const aHome = TEAM_FULL[activeMatch.home] || activeMatch.home, aVis = TEAM_FULL[activeMatch.visitor] || activeMatch.visitor;
+    mainBtn.innerHTML = isLive ? `🔴 Смотреть LIVE: ${aHome} — ${aVis}` : `▶ Смотреть последний матч: ${aHome} — ${aVis}`;
+
+    list.innerHTML = matches.map(m => {
+      const isMlive = (m.date === todayStr && m.winner === null), score = (m.home_goals !== null && m.visitor_goals !== null) ? `${m.home_goals} : ${m.visitor_goals}` : "- : -";
+      const homeName = TEAM_FULL[m.home] || m.home, visName = TEAM_FULL[m.visitor] || m.visitor;
+      return `<a href="live10.html?gameid=${m.gameid}" class="match-card ${isMlive ? 'is-live' : ''}"><div class="mc-team">${getLogoHtml(homeName)}<span class="mc-name">${homeName}</span></div><div class="mc-center"><div class="mc-score">${score}</div><div class="mc-status ${isMlive ? 'live-text' : ''}">${isMlive ? 'LIVE' : (m.winner ? 'Завершён' : 'Скоро')}</div></div><div class="mc-team away"><span class="mc-name">${visName}</span>${getLogoHtml(visName)}</div><div class="mc-date">${formatDate(m.date)}</div></a>`;
+    }).join("");
+  } catch (e) { list.innerHTML = `<div class="loading" style="color:#f85149;">Ошибка: ${e.message}</div>`; }
+}
+
+async function loadStandings() {
+  try {
+    const matches = await sb(`matches?select=home,visitor,home_goals,visitor_goals,winner,win_type&order=date.desc`);
+    if (!matches) return;
+    const stats = {}; [...WEST, ...EAST].forEach(t => stats[t] = { gp:0, w:0, vo:0, vb:0, po:0, pb:0, l:0, pts:0, gf:0, ga:0, form:[] });
+    matches.reverse().forEach(m => {
+      if (m.winner === null) return;
+      const h = m.home, v = m.visitor, hg = m.home_goals || 0, vg = m.visitor_goals || 0, isOt = ["OT", "ОТ"].includes(m.win_type), isSo = ["SO", "Б", "БУЛ"].includes(m.win_type);
+      if (!stats[h] || !stats[v]) return;
+      stats[h].gp++; stats[v].gp++; stats[h].gf += hg; stats[h].ga += vg; stats[v].gf += vg; stats[v].ga += hg;
+      if (m.winner === h) {
+        stats[h].w++; stats[v].l++;
+        if (isOt) { stats[h].vo++; stats[v].po++; } else if (isSo) { stats[h].vb++; stats[v].pb++; }
+        stats[h].pts += 2; if (isOt || isSo) stats[v].pts += 1; 
+        if (stats[h].form.length < 5) stats[h].form.push(1); if (stats[v].form.length < 5) stats[v].form.push(0);
+      } else {
+        stats[v].w++; stats[h].l++;
+        if (isOt) { stats[v].vo++; stats[h].po++; } else if (isSo) { stats[v].vb++; stats[h].pb++; }
+        stats[v].pts += 2; if (isOt || isSo) stats[h].pts += 1;
+        if (stats[v].form.length < 5) stats[v].form.push(1); if (stats[h].form.length < 5) stats[h].form.push(0);
+      }
+    });
+    const renderConf = (teams, tableId) => {
+      const table = document.getElementById(tableId);
+      const sorted = teams.map(t => ({ name: t, ...stats[t] })).sort((a, b) => b.pts - a.pts || b.w - a.w || (b.gf - b.ga) - (a.gf - a.ga));
+      let html = `<thead><tr><th>№</th><th style="text-align:left">Команда</th><th>И</th><th>В</th><th>П</th><th>О</th><th>ГЗ</th><th>ГП</th><th>РГ</th><th>Форма</th></tr></thead><tbody>`;
+      sorted.forEach((t, i) => {
+        const rg = t.gf - t.ga, formHtml = t.form.map(f => `<div class="f-dot ${f ? 'f-w' : 'f-l'}"></div>`).join("");
+        html += `<tr><td>${i + 1}</td><td><div class="st-team">${getLogoHtml(t.name).replace('mc-logo', 'st-logo')} ${t.name}</div></td><td>${t.gp}</td><td>${t.w}</td><td>${t.l}</td><td style="font-weight:900; color:#fff;">${t.pts}</td><td>${t.gf}</td><td>${t.ga}</td><td>${rg > 0 ? '+' + rg : rg}</td><td><div class="form-dots">${formHtml}</div></td></tr>`;
+      });
+      table.innerHTML = html + "</tbody>";
+    };
+    renderConf(WEST, "table-west"); renderConf(EAST, "table-east");
+  } catch (e) {}
+}
+
+async function loadNews() {
+  try {
+    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    
+    // Запрашиваем: либо свежие за 2 дня, либо любые травмы
+    const query = `news?select=text,type,link,team&is_active=eq.true&or=(pub_date.gte.${twoDaysAgo},type.eq.injury)&order=pub_date.desc&limit=30`;
+    
+    const news = await sb(query);
+    const content = document.getElementById("ticker-content"); 
+    if (!content) return;
+    
+    if (!news || news.length === 0) { 
+      content.innerHTML = '<span class="ticker-item">Свежих новостей пока нет</span>'; 
+      return; 
+    }
+
+    content.innerHTML = news.map(n => {
+      let prefix = "";
+      if (n.type === 'injury') prefix = `🏥 [${n.team || 'Лазарет'}] `;
+      else if (n.type === 'interview') prefix = `🎙️ [Интервью] `;
+      else prefix = `🏒 `;
+
+      return `<a class="ticker-item" href="${n.link || '#'}" target="_blank">${prefix}${n.text.replace(/</g, "&lt;")}</a>`;
+    }).join("");
+  } catch (e) { 
+    console.error("Ошибка новостей:", e);
+  }
+}
+
+loadMatches(); loadStandings(); loadNews(); setInterval(loadNews, 300000);
+</script>
+</body>
+</html>

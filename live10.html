@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Live КХЛ</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3; --muted: #8b949e; --home: #f85149; --visitor: #58a6ff; --goal-bg: rgba(35,134,54,0.15); --goal-border: #238636; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Roboto Condensed', sans-serif; background: var(--bg); color: var(--text); padding-bottom: 60px; display: flex; flex-direction: column; min-height: 100vh; }
+  
+  /* ТВ-плашка */
+  .tv-scorebug { display: flex; justify-content: center; align-items: stretch; background: linear-gradient(180deg, rgba(22,27,34,1) 0%, rgba(13,17,23,1) 100%); border-bottom: 2px solid var(--border); height: 70px; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 800px; margin: 0 auto; width: 100%; border-left: 1px solid var(--border); border-right: 1px solid var(--border); border-radius: 0 0 10px 10px; }
+  .team-side { display: flex; align-items: center; flex: 1; gap: 8px; }
+  .home-side { justify-content: flex-end; padding-right: 15px; }
+  .away-side { justify-content: flex-start; padding-left: 15px; }
+  .team-code { font-size: 20px; font-weight: 900; letter-spacing: 1px; }
+  .home-side .team-code { color: var(--home); } .away-side .team-code { color: var(--visitor); }
+  .tiny-logo { width: 36px; height: 36px; object-fit: contain; }
+  .sog-box { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: var(--muted); background: #21262d; padding: 2px 6px; border-radius: 4px; line-height: 1.1; }
+  .sog-box b { font-size: 14px; color: #fff; }
+  .score-center { display: flex; flex-direction: column; justify-content: center; align-items: center; background: #000; padding: 0 15px; min-width: 130px; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  .score-numbers { font-size: 34px; font-weight: 900; letter-spacing: 2px; line-height: 1; display: flex; align-items: center; gap: 6px; }
+  .score-divider { color: #484f58; font-size: 24px; }
+  .period-time { font-size: 12px; color: var(--muted); font-weight: 700; margin-top: 2px; text-transform: uppercase; }
+  .live-dot { width: 6px; height: 6px; background: #f85149; border-radius: 50%; display: inline-block; margin-right: 4px; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+  /* Таймлайн */
+  .timeline-container { max-width: 800px; width: 100%; margin: 10px auto 0; padding: 0 12px; display: none; }
+  .timeline-wrapper { background: var(--card); border-radius: 8px; padding: 12px 15px; width: 100%; }
+  .timeline-bar { position: relative; height: 40px; background: #21262d; border-radius: 6px; margin-bottom: 8px; width: 100%; }
+  .tl-time-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); font-weight: 700; padding: 0 4px; }
+
+  /* Вкладки */
+  .tabs { display: flex; justify-content: center; background: var(--card); border-bottom: 1px solid var(--border); margin-bottom: 16px; margin-top: 10px; overflow-x: auto; }
+  .tab { padding: 12px 20px; cursor: pointer; font-size: 14px; font-weight: 700; color: var(--muted); border-bottom: 2px solid transparent; text-transform: uppercase; white-space: nowrap; }
+  .tab.active { color: var(--text); border-bottom-color: var(--text); }
+
+  /* Контейнеры */
+  .feed-container, .stats-container { max-width: 600px; margin: 0 auto; padding: 0 12px; display: none; flex-grow: 1; width: 100%; }
+  .map-container { max-width: 900px; margin: 0 auto; padding: 0 12px; display: none; flex-grow: 1; width: 100%; }
+  .lineups-container { max-width: 700px; margin: 0 auto; padding: 0 12px; display: none; flex-grow: 1; width: 100%; }
+  .feed-container.active, .map-container.active, .stats-container.active, .lineups-container.active { display: block; }
+
+  /* Лента */
+  .event { display: flex; align-items: flex-start; background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid transparent; }
+  .event.goal { background: var(--goal-bg); border-color: var(--goal-border); }
+  .time { font-size: 14px; color: var(--muted); font-weight: 700; width: 45px; flex-shrink: 0; margin-top: 1px; }
+  .icon { font-size: 18px; margin-right: 12px; flex-shrink: 0; }
+  .event-body { flex-grow: 1; font-size: 15px; line-height: 1.3; }
+  .event-title { font-weight: 700; margin-bottom: 2px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px; }
+  .assists { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .score-after { font-size: 14px; color: #fff; font-weight: 900; margin-top: 4px; }
+  .team-a-text { color: var(--home); font-weight: 700; } .team-b-text { color: var(--visitor); font-weight: 700; }
+  .player-link { cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2); }
+  .player-link:hover { color: #fff; }
+
+  /* Составы */
+  .lineup-header { display: flex; justify-content: space-between; padding: 10px; font-weight: 900; font-size: 18px; text-transform: uppercase; margin-bottom: 10px; }
+  .lineup-header .home { color: var(--home); } .lineup-header .away { color: var(--visitor); text-align: right; }
+  .lineup-grid { display: flex; flex-direction: column; gap: 20px; }
+  @media(min-width: 600px) { .lineup-grid { flex-direction: row; } }
+  .lineup-col { flex: 1; min-width: 0; }
+  .line-box { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+  .line-title { background: #21262d; padding: 8px 12px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  .line-players { display: flex; flex-direction: column; }
+  .line-player { display: flex; align-items: center; padding: 8px 12px; font-size: 13px; border-bottom: 1px solid #21262d; }
+  .line-player:last-child { border-bottom: none; }
+  .line-player .num { font-weight: 900; color: var(--text); width: 30px; flex-shrink: 0; }
+  .line-player .name { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .line-player .pos { color: var(--muted); font-size: 10px; font-weight: 700; margin-left: 5px; background: #21262d; padding: 2px 4px; border-radius: 4px; }
+
+  /* Карта */
+  .rink-wrapper { background: white; border-radius: 12px; padding: 10px; margin-bottom: 16px; position: relative; }
+  .shot-tooltip { position: absolute; background: rgba(0,0,0,0.9); color: white; padding: 6px 10px; border-radius: 4px; font-size: 13px; font-weight: 700; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 100; white-space: nowrap; }
+  .map-controls { display: flex; gap: 8px; margin-bottom: 12px; justify-content: center; }
+  .map-controls button { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 700; font-family: inherit; }
+  .map-controls button.active { background: var(--home); border-color: var(--home); color: white; }
+  .map-controls button.active.b-btn { background: var(--visitor); border-color: var(--visitor); }
+
+  /* Статистика */
+  .stats-periods { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
+  .stats-periods button { background: var(--card); color: var(--muted); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; font-family: inherit; }
+  .stats-periods button.active { background: #30363d; color: #fff; border-color: #484f58; }
+  .stats-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--card); border-radius: 8px; margin-bottom: 16px; font-size: 18px; font-weight: 900; }
+  .stats-header .h { color: var(--home); } .stats-header .a { color: var(--visitor); }
+  .stat-row { margin-bottom: 14px; }
+  .stat-values { display: flex; justify-content: space-between; font-size: 16px; font-weight: 900; margin-bottom: 4px; }
+  .stat-values .home { color: var(--home); } .stat-values .away { color: var(--visitor); }
+  .stat-title { text-align: center; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-weight: 700; }
+  .stat-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: #21262d; }
+  .stat-bar-home { background: var(--home); height: 100%; transition: width 0.4s; } .stat-bar-away { background: var(--visitor); height: 100%; transition: width 0.4s; }
+  .stat-divider { text-align: center; font-size: 12px; color: #484f58; text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 12px; position: relative; font-weight: 700; }
+  .stat-divider::before, .stat-divider::after { content: ""; position: absolute; top: 50%; width: 30%; height: 1px; background: var(--border); }
+  .stat-divider::before { left: 0; } .stat-divider::after { right: 0; }
+  .stat-percent { display: flex; justify-content: space-between; font-size: 16px; font-weight: 900; padding: 4px 0; }
+  .loading { text-align: center; color: var(--muted); padding: 40px; font-size: 15px; font-weight: 700; }
+  .update-timer { text-align: center; font-size: 12px; color: #484f58; padding: 20px 0; font-weight: 700; }
+
+  /* Модалка */
+  .player-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+  .player-modal-inner { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 90%; max-width: 400px; padding: 20px; position: relative; }
+  .close-btn { position: absolute; top: 10px; right: 15px; background: none; border: none; color: var(--muted); font-size: 28px; cursor: pointer; z-index: 10; }
+  .pm-header { display: flex; align-items: center; gap: 15px; margin-bottom: 16px; }
+  .pm-photo { width: 80px; height: 80px; border-radius: 50%; background: #21262d; object-fit: cover; border: 2px solid var(--border); }
+  .pm-title { font-size: 22px; font-weight: 900; margin-bottom: 2px; }
+  .pm-team { font-size: 14px; color: var(--muted); font-weight: 700; }
+  .pm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; }
+  .pm-cell { background: #21262d; padding: 10px; border-radius: 8px; text-align: center; }
+  .pm-cell-title { color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 700; }
+  .pm-cell-val { font-size: 20px; font-weight: 900; color: #fff; margin-top: 2px; }
+
+  /* Бегущая строка */
+  .ticker-wrap { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #000; border-top: 1px solid #30363d; z-index: 99999; display: flex; overflow: hidden; align-items: center; }
+  .ticker-title { background: #f85149; color: #fff; font-weight: 900; padding: 0 15px; height: 100%; display: flex; align-items: center; z-index: 10; white-space: nowrap; }
+  .ticker { display: flex; align-items: center; white-space: nowrap; animation: ticker 180s linear infinite; padding-left: 100vw; }
+  .ticker:hover { animation-play-state: paused; }
+  .ticker-item { color: #e6edf3; font-size: 15px; font-weight: 700; text-decoration: none; padding-right: 40px; }
+  .ticker-item:hover { color: #58a6ff; }
+  @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+</style>
+</head>
+<body>
+
+<div class="tv-scorebug">
+  <div class="team-side home-side"><span class="team-code" id="home-code">...</span><img id="home-logo" class="tiny-logo" style="display:none;"><div class="sog-box"><span>БР</span><b id="home-sog">-</b></div></div>
+  <div class="score-center"><div class="score-numbers"><span id="score-home">0</span><span class="score-divider">:</span><span id="score-away">0</span></div><div class="period-time" id="period-block"><span class="live-dot" id="live-dot"></span><span id="tv-period">Загрузка...</span></div></div>
+  <div class="team-side away-side"><div class="sog-box"><span>БР</span><b id="away-sog">-</b></div><img id="visitor-logo" class="tiny-logo" style="display:none;"><span class="team-code" id="visitor-code">...</span></div>
+</div>
+
+<div class="timeline-container" id="timeline-container"><div class="timeline-wrapper"><div class="timeline-bar" id="timeline-bar"></div><div class="tl-time-labels" id="tl-labels"></div></div></div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('feed')">Лента</div>
+  <div class="tab" onclick="switchTab('lineups')">Составы</div>
+  <div class="tab" onclick="switchTab('map')">Карта</div>
+  <div class="tab" onclick="switchTab('stats')">Статистика</div>
+</div>
+
+<div class="feed-container active" id="feed-container"><div class="loading" id="feed">Загрузка...</div></div>
+
+<div class="lineups-container" id="lineups-container"><div class="loading">Загрузка составов...</div></div>
+
+<div class="map-container" id="map-container">
+  <div class="map-controls">
+    <button class="active" id="btn-all" onclick="filterShots('all')">Все</button>
+    <button id="btn-home" onclick="filterShots('A')">Хозяева</button>
+    <button id="btn-visitor" class="b-btn" onclick="filterShots('B')">Гости</button>
+  </div>
+  <div style="text-align: center; margin-bottom: 12px;"><select id="player-filter" onchange="filterPlayer(this.value)" style="background:#161b22; color:#e6edf3; border:1px solid #30363d; padding:10px; border-radius:6px; font-size:15px; font-family:inherit; font-weight:700; width:90%;"><option value="all">Все игроки</option></select></div>
+  <div class="rink-wrapper"><svg id="rink" viewBox="0 0 1000 500" width="100%" height="100%"></svg><div class="shot-tooltip" id="tooltip"></div></div>
+</div>
+
+<div class="stats-container" id="stats-container">
+  <div class="stats-periods">
+    <button class="active" onclick="setStatsPeriod(0)">Весь матч</button><button onclick="setStatsPeriod(1)">1-й</button><button onclick="setStatsPeriod(2)">2-й</button><button onclick="setStatsPeriod(3)">3-й</button>
+  </div>
+  <div id="stats-content"><div class="loading">Загрузка...</div></div>
+</div>
+
+<div class="update-timer" id="update-timer">Обновление данных...</div>
+
+<div class="player-modal" id="player-modal" onclick="closePlayerModal(event)">
+  <div class="player-modal-inner" onclick="event.stopPropagation()">
+    <button type="button" class="close-btn" onclick="closePlayerModal(event)">&times;</button>
+    <div class="pm-header"><img id="pm-photo" class="pm-photo" style="display:none;"><div><div class="pm-title" id="pm-name">Игрок</div><div class="pm-team" id="pm-team">Команда</div></div></div>
+    <div class="pm-grid">
+      <div class="pm-cell"><div class="pm-cell-title">Очки</div><div class="pm-cell-val" id="pm-pts">0</div></div>
+      <div class="pm-cell"><div class="pm-cell-title">Гол + Пас</div><div class="pm-cell-val" id="pm-ga">0 + 0</div></div>
+      <div class="pm-cell"><div class="pm-cell-title">Броски</div><div class="pm-cell-val" id="pm-sog">0</div></div>
+      <div class="pm-cell"><div class="pm-cell-title">Силовые</div><div class="pm-cell-val" id="pm-hits">0</div></div>
+      <div class="pm-cell"><div class="pm-cell-title">+/-</div><div class="pm-cell-val" id="pm-pm">0</div></div>
+      <div class="pm-cell"><div class="pm-cell-title">Время</div><div class="pm-cell-val" id="pm-toi">00:00</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="ticker-wrap">
+  <div class="ticker-title">НОВОСТИ</div>
+  <div class="ticker" id="ticker-content"><span class="ticker-item">Загрузка...</span></div>
+</div>
+
+<script>
+const SUPABASE = "https://xkjwomtycemjbmhjxnio.supabase.co";
+const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrandvbXR5Y2VtamJtaGp4bmlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3MTk1NTAsImV4cCI6MjEwNzI5NTU1MH0.TqNPgvxf_NfOjv0kU8fwtf5hDegYisVZPjjvX1iAdSs";
+const SUPABASE_STORAGE = "https://xkjwomtycemjbmhjxnio.supabase.co/storage/v1/object/public/logos/";
+const TEAM_LOGOS = { "Ак Барс": "53.png", "Адмирал": "418.png", "Амур": "54.png", "Автомобилист": "190.png", "Авангард": "34.png", "Барыс": "198.png", "Динамо М": "719.png", "Динамо Мн": "207.png", "Лада": "66.png", "Локомотив": "1.png", "Металлург Мг": "37.png", "Нефтехимик": "71.png", "Салават Юлаев": "38.png", "Северсталь": "56.png", "Сибирь": "29.png", "СКА": "24.png", "Спартак": "7.png", "Торпедо НН": "26.png", "Трактор": "25.png", "ХК Сочи": "451.png", "ЦСКА": "2.png", "Шанхай Дрэгонс": "568.png" };
+const TEAM_CODES = { "Ак Барс": "АКБ", "Адмирал": "АДМ", "Амур": "АМР", "Автомобилист": "АВТ", "Авангард": "АВГ", "Барыс": "БАР", "Динамо М": "ДИН", "Динамо Мн": "ДМН", "Лада": "ЛАД", "Локомотив": "ЛОК", "Металлург Мг": "ММГ", "Нефтехимик": "НХК", "Салават Юлаев": "САЛ", "Северсталь": "СЕВ", "Сибирь": "СИБ", "СКА": "СКА", "Спартак": "СПА", "Торпедо НН": "ТОР", "Трактор": "ТРК", "ХК Сочи": "СОЧ", "ЦСКА": "ЦСК", "Шанхай Дрэгонс": "ДРК" };
+
+let roster = {}, goalsData = {}, penaltiesData = {}, commentaryData = [], seasonStats = {};
+let lastMaxEventId = 0, homeTeam = "", visitorTeam = "", currentGameid = null, currentMatchData = null;
+let allShots = [], currentShotFilter = 'all', currentPlayerFilter = 'all';
+let currentStatsPeriod = 0, teamStatsData = null, lastUpdateTime = Date.now(), isUpdating = false, lastShotsUpdate = 0;
+
+const cleanNum = (n) => String(n ?? '').trim().replace(/^0+/, '').replace(/\.0$/, '') || '0';
+const parseTimeStr = (str) => { if (!str) return 0; const p = String(str).split(":"); return Number(p[0]) * 60 + Number(p[1]); };
+const parseExtra = (extra) => { if (!extra) return {}; if (typeof extra === "string") { try { return JSON.parse(extra); } catch (e) { return {}; } } return extra; };
+async function sb(path) { try { const r = await fetch(`${SUPABASE}/rest/v1/${path}`, { headers: { "apikey": KEY, "Authorization": "Bearer " + KEY } }); if (!r.ok) return null; return await r.json(); } catch (e) { return null; } }
+
+function updateHeaderTeams(m) {
+  const hCode = document.getElementById("home-code"); if (hCode) hCode.textContent = TEAM_CODES[homeTeam] || homeTeam.substring(0, 3).toUpperCase();
+  const vCode = document.getElementById("visitor-code"); if (vCode) vCode.textContent = TEAM_CODES[visitorTeam] || visitorTeam.substring(0, 3).toUpperCase();
+  const sHome = document.getElementById("score-home"); if (sHome) sHome.textContent = m.home_goals ?? 0;
+  const sAway = document.getElementById("score-away"); if (sAway) sAway.textContent = m.visitor_goals ?? 0;
+  const hLogo = document.getElementById("home-logo"); if (hLogo) { if (TEAM_LOGOS[homeTeam]) { hLogo.src = SUPABASE_STORAGE + TEAM_LOGOS[homeTeam]; hLogo.style.display = "block"; } else { hLogo.style.display = "none"; } }
+  const vLogo = document.getElementById("visitor-logo"); if (vLogo) { if (TEAM_LOGOS[visitorTeam]) { vLogo.src = SUPABASE_STORAGE + TEAM_LOGOS[visitorTeam]; vLogo.style.display = "block"; } else { vLogo.style.display = "none"; } }
+}
+
+async function loadSeasonStats() { const s = await sb(`team_season?select=team,pp_pct,pk_pct`); if (s) s.forEach(t => { seasonStats[t.team] = t; }); }
+
+async function loadRoster() {
+  if (!currentGameid) return;
+  try {
+    const identity = await sb(`identity?select=team,num,player,photo&or=(team.eq.${encodeURIComponent(homeTeam)},team.eq.${encodeURIComponent(visitorTeam)})`);
+    if (identity) identity.forEach(p => { const numStr = cleanNum(p.num || ""); if (!numStr) return; const ab = p.team === homeTeam ? "A" : "B"; roster[`${ab}_${numStr}`] = { name: p.player.split(" ")[0], fullName: p.player, g: 0, a: 0, sog: 0, hits: 0, pm: 0, toi: "00:00", team: p.team, photo: p.photo }; });
+    const players = await sb(`players_stats?gameid=eq.${currentGameid}`);
+    if (players) players.forEach(p => { const numStr = cleanNum(p.num || p.jn || ""); if (!numStr) return; const ab = p.team === homeTeam ? "A" : "B"; const key = `${ab}_${numStr}`; if (!roster[key]) roster[key] = { name: p.player.split(" ")[0], fullName: p.player, team: p.team, photo: p.photo || null }; roster[key].g = p.g; roster[key].a = p.a; roster[key].sog = p.sog; roster[key].hits = p.hits; roster[key].pm = p.pm; roster[key].toi = p.toi; });
+  } catch (e) {}
+}
+
+async function loadGoals() {
+  if (!currentGameid) return;
+  goalsData = {};
+  let scoreA = 0, scoreB = 0;
+  const goals = await sb('goals?gameid=eq.' + currentGameid);
+  if (goals && goals.length > 0) {
+    goals.forEach(g => { goalsData[`${g.period}_${g.time_ms}`] = { time_ms: g.time_ms, period: g.period, team: g.team, assist_1: g.assist_1, assist_2: g.assist_2, score_a: g.score_a, score_b: g.score_b }; });
+  }
+  const liveGoals = await sb('game_legend?gameid=eq.' + currentGameid + '&type=eq.goal');
+  if (liveGoals && liveGoals.length > 0) {
+    liveGoals.sort((a, b) => Number(a.period) - Number(b.period) || parseTimeStr(a.time_ms) - parseTimeStr(b.time_ms));
+    liveGoals.forEach(g => {
+      const key = `${g.period}_${g.time_ms}`;
+      const ex = parseExtra(g.extra);
+      if (!goalsData[key]) { goalsData[key] = { time_ms: g.time_ms, period: g.period, team: g.team_ab === 'A' ? homeTeam : visitorTeam, assist_1: ex.assist_1?.name || null, assist_2: ex.assist_2?.name || null, score_a: ex.scA || 0, score_b: ex.scB || 0 }; }
+      else { if (ex.scA !== undefined) goalsData[key].score_a = ex.scA; if (ex.scB !== undefined) goalsData[key].score_b = ex.scB; }
+    });
+  }
+  Object.values(goalsData).forEach(g => { if (g.score_a !== undefined) scoreA = g.score_a; if (g.score_b !== undefined) scoreB = g.score_b; });
+  document.getElementById("score-home").textContent = scoreA;
+  document.getElementById("score-away").textContent = scoreB;
+}
+
+async function loadPenalties() { if (!currentGameid) return; const pens = await sb(`penalties?gameid=eq.${currentGameid}&select=period,time,minutes,reason,team,player`); penaltiesData = []; if (pens) penaltiesData = pens; }
+async function loadCommentary() { if (!currentGameid) return; try { commentaryData = await sb(`commentary?gameid=eq.${currentGameid}&order=id.desc&limit=20`) || []; } catch (e) {} }
+
+async function loadFeed() {
+  if (!currentGameid) return;
+  try {
+    const events = await sb(`game_legend?gameid=eq.${currentGameid}&order=period.desc,time_ms.desc&limit=500`);
+    const feed = document.getElementById("feed");
+    if (!events || events.length === 0) { feed.innerHTML = '<div class="loading">Событий пока нет...</div>'; return; }
+    const maxPeriod = Math.max(...events.map(e => e.period));
+    updateHeaderStats(events, maxPeriod);
+    let commentaryHtml = commentaryData.map(c => `<div class="event" style="border-left:3px solid ${c.priority ? '#f0c040' : '#58a6ff'};background:${c.priority ? 'rgba(240,192,64,0.08)' : 'rgba(88,166,255,0.05)'};margin-bottom:8px;"><div class="time">${c.time_ms || '—'}</div><div class="icon">${c.priority ? '🔥' : '💬'}</div><div class="event-body"><div class="event-title">${c.priority ? 'ВАЖНО' : 'КОММЕНТАРИЙ'}</div><div class="event-details">${c.text}</div><div class="assists" style="font-size:11px;">${c.author || 'Оператор'}, ${c.period}-й период</div></div></div>`).join('');
+    const eventsHtml = events.map(e => {
+      const isGoal = e.type === "goal", isA = e.team_ab === "A", teamClass = isA ? "team-a-text" : "team-b-text", teamName = isA ? homeTeam : visitorTeam;
+      let playerName = "";
+      if (e.jn && e.jn !== "0") { const pObj = roster[`${e.team_ab}_${cleanNum(e.jn)}`]; if (pObj) playerName = `<b class="player-link" onclick="showPlayerModal('${e.team_ab}', '${cleanNum(e.jn)}')">${pObj.name}</b>`; else playerName = `№${e.jn}`; }
+      let icon = "", title = "", details = "", extraHtml = "";
+      switch (e.type) {
+        case "goal": {
+          icon = "🚨"; title = "ГОЛ!"; details = `<span class="${teamClass}">${teamName}</span> ${playerName}`; const gKey = `${e.period}_${e.time_ms}`; 
+          if (goalsData[gKey]) { const g = goalsData[gKey]; const a1 = g.assist_1 ? `<b>${g.assist_1.split(" ")[0]}</b>` : null; const a2 = g.assist_2 ? `<b>${g.assist_2.split(" ")[0]}</b>` : null; if (a1 || a2) extraHtml = `<div class="assists">Ассисты: ${[a1, a2].filter(Boolean).join(', ')}</div>`; else extraHtml = `<div class="assists">Ассисты уточняются...</div>`; if (g.score_a !== undefined) extraHtml += `<div class="score-after">Счёт: ${g.score_a} : ${g.score_b}</div>`; } break;
+        }
+        case "shot": { if (e.result === "miss") return ""; icon = "🎯"; title = "Бросок"; details = `${playerName} (${teamName})`; break; }
+        case "block": { icon = "🛡"; title = "Блок"; details = `${playerName} (${teamName})`; break; }
+        case "goalkeeper": { icon = "🧤"; title = "Смена вратаря"; details = teamName; break; }
+        case "timeout": { icon = "⏸"; title = "Тайм-аут"; details = teamName; break; }
+        case "penalty": {
+          icon = "🟨"; title = "Удаление"; let penPlayer = playerName; let penExtra = "";
+          const penData = penaltiesData.find(p => String(p.period) === String(e.period) && String(p.time) === String(e.time_ms));
+          if (penData) { if (penData.player) penPlayer = `<b>${penData.player.split(" ")[0]}</b>`; if (penData.minutes) penExtra += `<b>${penData.minutes} мин.</b> `; if (penData.reason) penExtra += `— ${penData.reason}`; } else { const raw = parseExtra(e.extra); if (raw.mins) penExtra += `<b>${raw.mins} мин.</b> `; penExtra += `<span style="color:#484f58;">— Причина уточняется</span>`; }
+          const oppTeam = isA ? visitorTeam : homeTeam; const oppPP = seasonStats[oppTeam]?.pp_pct ? Number(seasonStats[oppTeam].pp_pct).toFixed(0) : null;
+          if (oppPP) penExtra += `<br><span style="color:#8b949e; font-size:12px;">Реализация бол. ${TEAM_CODES[oppTeam] || oppTeam}: ${oppPP}%</span>`;
+          details = `${penPlayer} (${teamName})`; extraHtml = `<div class="assists" style="color:#f0c040;">${penExtra}</div>`; break;
+        }
+        case "action": { if (e.result === "hit") { icon = "💥"; title = "Силовой"; details = `${playerName} (${teamName})`; } else return ""; break; }
+        default: return "";
+      }
+      if (!details) return "";
+      return `<div class="event ${isGoal ? 'goal' : ''}"><div class="time">${e.time_ms}</div><div class="icon">${icon}</div><div class="event-body"><div class="event-title">${title}</div><div class="event-details">${details}</div>${extraHtml}</div></div>`;
+    }).join('');
+    feed.innerHTML = commentaryHtml + eventsHtml;
+  } catch (err) {}
+}
+
+function updateHeaderStats(events, maxPeriod) {
+  let sA = 0, sB = 0; events.forEach(e => { if (e.type === 'shot' && e.result !== 'miss') { if (e.team_ab === 'A') sA++; else sB++; } });
+  document.getElementById("home-sog").textContent = sA; document.getElementById("away-sog").textContent = sB;
+  if (currentMatchData?.winner) { document.getElementById("tv-period").textContent = "Матч завершён"; document.getElementById("live-dot").style.display = "none"; }
+  else { const perNames = { 1: "1ST", 2: "2ND", 3: "3RD", 4: "OT" }; document.getElementById("tv-period").textContent = perNames[maxPeriod] || `${maxPeriod}-й период`; document.getElementById("live-dot").style.display = "inline-block"; }
+  renderTimeline();
+}
+
+function renderTimeline() {
+  const container = document.getElementById("timeline-container"), bar = document.getElementById("timeline-bar"), labels = document.getElementById("tl-labels");
+  const goals = Object.values(goalsData).sort((a, b) => a.period !== b.period ? a.period - b.period : parseTimeStr(a.time_ms) - parseTimeStr(b.time_ms));
+  if (goals.length === 0) { container.style.display = "none"; return; } container.style.display = "block";
+  const maxPeriod = Math.max(...goals.map(g => Number(g.period))), hasOT = maxPeriod >= 4, totalMin = hasOT ? 65 : 60, numP = hasOT ? 4 : 3;
+  bar.innerHTML = ''; for (let i = 1; i < numP; i++) { const div = document.createElement("div"); div.style.cssText = "position:absolute;top:0;bottom:0;width:1px;background:#30363d;"; div.style.left = (i * (100 / numP)) + "%"; bar.appendChild(div); }
+  labels.innerHTML = hasOT ? "<span>0'</span><span>20'</span><span>40'</span><span>60'</span><span>65'</span>" : "<span>0'</span><span>20'</span><span>40'</span><span>60'</span>";
+  goals.forEach(g => { const minP = parseTimeStr(g.time_ms) / 60, absM = (Number(g.period) - 1) * 20 + minP; let pos = (absM / totalMin) * 100; if (isNaN(pos)) pos = 50; pos = Math.min(97, Math.max(3, pos)); const color = g.team === homeTeam ? "#f85149" : "#58a6ff"; const marker = document.createElement("div"); marker.style.cssText = `position:absolute;top:50%;transform:translate(-50%,-50%);height:18px;min-width:24px;padding:0 4px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:white;cursor:pointer;left:${pos}%;background:${color};border:2px solid #0d1117;z-index:10;`; marker.textContent = `${g.score_a}:${g.score_b}`; bar.appendChild(marker); });
+}
+
+async function loadShots() { if (!currentGameid) return; allShots = await sb(`shots?gameid=eq.${currentGameid}`) || []; buildPlayerFilter(); renderRink(); }
+
+function renderRink() { 
+  const svg = document.getElementById("rink"); 
+  svg.innerHTML = `
+    <rect fill="#f0f8ff" x="0" y="0" width="1000" height="500" rx="60" ry="60" stroke="#ccc" stroke-width="4"/>
+    <line x1="500" y1="0" x2="500" y2="500" stroke="#cc0000" stroke-width="6" stroke-dasharray="15,10"/>
+    <line x1="350" y1="0" x2="350" y2="500" stroke="#0044cc" stroke-width="6"/>
+    <line x1="650" y1="0" x2="650" y2="500" stroke="#0044cc" stroke-width="6"/>
+    <circle cx="500" cy="250" r="60" stroke="#0044cc" stroke-width="4" fill="none"/>
+    <circle cx="500" cy="250" r="8" fill="#0044cc"/>
+    <circle cx="200" cy="130" r="60" stroke="#cc0000" stroke-width="4" fill="none"/>
+    <circle cx="200" cy="370" r="60" stroke="#cc0000" stroke-width="4" fill="none"/>
+    <circle cx="200" cy="130" r="6" fill="#cc0000"/>
+    <circle cx="200" cy="370" r="6" fill="#cc0000"/>
+    <circle cx="800" cy="130" r="60" stroke="#cc0000" stroke-width="4" fill="none"/>
+    <circle cx="800" cy="370" r="60" stroke="#cc0000" stroke-width="4" fill="none"/>
+    <circle cx="800" cy="130" r="6" fill="#cc0000"/>
+    <circle cx="800" cy="370" r="6" fill="#cc0000"/>
+    <path d="M 0 200 L 20 200 L 20 300 L 0 300 Z" fill="#cc0000" />
+    <path d="M 1000 200 L 980 200 L 980 300 L 1000 300 Z" fill="#cc0000" />
+  `; 
+  if (!allShots || allShots.length === 0) return; 
+  const tooltip = document.getElementById("tooltip"), rinkWrapper = document.querySelector(".rink-wrapper");
+
+  allShots.forEach(s => { 
+    if (currentShotFilter !== 'all' && s.team_ab !== currentShotFilter) return; 
+    if (currentPlayerFilter !== 'all' && String(s.jn) !== String(currentPlayerFilter)) return; 
+    
+    let svgX = parseFloat(String(s.x).replace(',', '.'));
+    let svgY = parseFloat(String(s.y).replace(',', '.'));
+    if (isNaN(svgX) || isNaN(svgY)) return;
+
+    svgX = Math.max(20, Math.min(980, svgX));
+    svgY = Math.max(20, Math.min(480, svgY));
+
+    const isGoal = s.shot_type === 1, color = s.team_ab === "A" ? "#f85149" : "#58a6ff"; 
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle"); 
+    circle.setAttribute("cx", svgX); circle.setAttribute("cy", svgY); circle.setAttribute("r", isGoal ? 20 : 15); circle.setAttribute("fill", color); circle.setAttribute("fill-opacity", isGoal ? 1 : 0.85); circle.style.cursor = "pointer";
+    circle.onclick = () => { if (s.jn && s.jn !== "0") showPlayerModal(s.team_ab, cleanNum(s.jn)); };
+    circle.onmouseover = () => { tooltip.style.opacity = 1; const pName = roster[`${s.team_ab}_${cleanNum(s.jn)}`]?.name || `№${s.jn}`; const teamName = s.team_ab === "A" ? homeTeam : visitorTeam; tooltip.textContent = `${pName} (${teamName}) — ${s.time_ms} ${isGoal ? '🚨 ГОЛ' : 'Бросок'}`; };
+    circle.onmousemove = (e) => { const rect = rinkWrapper.getBoundingClientRect(); tooltip.style.left = (e.clientX - rect.left + 15) + "px"; tooltip.style.top = (e.clientY - rect.top + 15) + "px"; };
+    circle.onmouseout = () => { tooltip.style.opacity = 0; };
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text"); text.setAttribute("x", svgX); text.setAttribute("y", svgY); text.setAttribute("text-anchor", "middle"); text.setAttribute("dominant-baseline", "central"); text.setAttribute("fill", "white"); text.setAttribute("font-size", isGoal ? 13 : 11); text.setAttribute("font-weight", "bold"); text.style.pointerEvents = "none"; text.textContent = cleanNum(s.jn); 
+    svg.appendChild(circle); svg.appendChild(text); 
+  }); 
+}
+
+function buildPlayerFilter() { const select = document.getElementById("player-filter"); while (select.options.length > 1) select.remove(1); if (!allShots) return; const shooters = {}; allShots.forEach(s => { if (!s.jn || s.jn === "0") return; const key = `${s.team_ab}_${cleanNum(s.jn)}`; if (!shooters[key]) shooters[key] = { ab: s.team_ab, jn: cleanNum(s.jn), name: roster[key]?.name || `№${s.jn}`, goals: 0 }; if (s.shot_type === 1) shooters[key].goals++; }); Object.values(shooters).sort((a, b) => a.ab.localeCompare(b.ab) || Number(a.jn) - Number(b.jn)).forEach(sh => { const opt = document.createElement("option"); opt.value = sh.jn + "_" + sh.ab; opt.textContent = `${sh.ab === "A" ? "🔴" : "🔵"} №${sh.jn} ${sh.name}${sh.goals > 0 ? ` ⚽${sh.goals}` : ""}`; select.appendChild(opt); }); }
+function filterPlayer(val) { if (val === "all") { currentPlayerFilter = 'all'; currentShotFilter = 'all'; document.querySelectorAll(".map-controls button").forEach(b => b.classList.remove("active")); document.getElementById("btn-all").classList.add("active"); } else { const parts = val.split("_"); currentPlayerFilter = parts[0]; currentShotFilter = parts[1]; document.querySelectorAll(".map-controls button").forEach(b => b.classList.remove("active")); if (parts[1] === 'A') document.getElementById("btn-home").classList.add("active"); if (parts[1] === 'B') document.getElementById("btn-visitor").classList.add("active"); } renderRink(); }
+function filterShots(team) { currentShotFilter = team; currentPlayerFilter = 'all'; document.getElementById("player-filter").value = "all"; document.querySelectorAll(".map-controls button").forEach(b => b.classList.remove("active")); if (team === 'all') document.getElementById("btn-all").classList.add("active"); if (team === 'A') document.getElementById("btn-home").classList.add("active"); if (team === 'B') document.getElementById("btn-visitor").classList.add("active"); renderRink(); }
+
+function switchTab(tab) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".feed-container, .map-container, .stats-container, .lineups-container").forEach(c => c.classList.remove("active"));
+  
+  if (tab === 'feed') { document.querySelectorAll(".tab")[0].classList.add("active"); document.getElementById("feed-container").classList.add("active"); }
+  else if (tab === 'lineups') { document.querySelectorAll(".tab")[1].classList.add("active"); document.getElementById("lineups-container").classList.add("active"); renderLineups(); }
+  else if (tab === 'map') { document.querySelectorAll(".tab")[2].classList.add("active"); document.getElementById("map-container").classList.add("active"); renderRink(); }
+  else if (tab === 'stats') { document.querySelectorAll(".tab")[3].classList.add("active"); document.getElementById("stats-container").classList.add("active"); if (!teamStatsData && currentGameid) loadTeamStats().then(renderTeamStats); else renderTeamStats(); }
+}
+
+async function renderLineups() {
+  const container = document.getElementById("lineups-container");
+  container.innerHTML = '<div class="loading">Загрузка...</div>';
+  const data = await sb(`identity?select=*&or=(team.eq.${encodeURIComponent(homeTeam)},team.eq.${encodeURIComponent(visitorTeam)})`);
+  if (!data || data.length === 0) { container.innerHTML = '<div class="loading">Составы еще не загружены.</div>'; return; }
+  
+  let html = `<div class="lineup-header"><span class="home">${homeTeam}</span><span class="away">${visitorTeam}</span></div><div class="lineup-grid">`;
+  [homeTeam, visitorTeam].forEach(team => {
+    const ab = team === homeTeam ? "A" : "B"; 
+    const players = data.filter(p => p.team === team);
+    const lines = {};
+    players.forEach(p => { let key = p.position === 'Вр' ? 'Вратари' : (p.line ? `${p.line}-е звено` : 'Резерв'); if (!lines[key]) lines[key] = []; lines[key].push(p); });
+    html += `<div class="lineup-col">`;
+    Object.keys(lines).sort((a, b) => { if (a === 'Вратари') return -1; if (b === 'Вратари') return 1; if (a === 'Резерв') return 1; if (b === 'Резерв') return -1; return parseInt(a) - parseInt(b); }).forEach(key => {
+      html += `<div class="line-box"><div class="line-title">${key}</div><div class="line-players">`;
+      lines[key].sort((a, b) => { if (a.position === 'Защ' && b.position !== 'Защ') return -1; if (b.position === 'Защ' && a.position !== 'Защ') return 1; return Number(a.num) - Number(b.num); }).forEach(p => {
+        const numStr = cleanNum(p.num);
+        const stats = roster[`${ab}_${numStr}`] || { g: 0, a: 0 };
+        const pts = (Number(stats.g) || 0) + (Number(stats.a) || 0);
+        let statsHtml = pts > 0 ? `<span class="stats" style="font-size: 12px; color: var(--goal-border); font-weight: 900; margin-right: 10px;">${stats.g}Г ${stats.a}П</span>` : '';
+        html += `<div class="line-player" onclick="showPlayerModal('${ab}', '${numStr}')" style="cursor:pointer; transition: background 0.2s;" onmouseover="this.style.background='#21262d'" onmouseout="this.style.background='transparent'">
+          <span class="num">${p.num || '-'}</span>
+          <span class="name player-link">${p.player}</span>
+          ${statsHtml}
+          <span class="pos">${p.position}</span>
+        </div>`;
+      });
+      html += `</div></div>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+function showPlayerModal(ab, jn) { const p = roster[`${ab}_${jn}`]; if (!p) return; const img = document.getElementById("pm-photo"); if (p.photo) { img.src = p.photo; img.style.display = "block"; } else { img.style.display = "none"; } document.getElementById("pm-name").textContent = p.fullName; document.getElementById("pm-team").textContent = p.team; document.getElementById("pm-pts").textContent = (Number(p.g) || 0) + (Number(p.a) || 0); document.getElementById("pm-ga").textContent = `${p.g || 0} + ${p.a || 0}`; document.getElementById("pm-sog").textContent = p.sog || 0; document.getElementById("pm-hits").textContent = p.hits || 0; const pmVal = Number(p.pm) || 0; document.getElementById("pm-pm").textContent = pmVal > 0 ? `+${pmVal}` : pmVal; document.getElementById("pm-toi").textContent = p.toi || "00:00"; document.getElementById("player-modal").style.display = "flex"; }
+function closePlayerModal(e) { if (e && e.target.id !== 'player-modal' && !e.target.classList.contains('close-btn')) return; document.getElementById("player-modal").style.display = "none"; }
+document.addEventListener('keydown', function(event) { if (event.key === 'Escape' || event.key === 'Esc') { document.getElementById("player-modal").style.display = "none"; } });
+
+async function loadTeamStats() { if (!currentGameid) return; try { teamStatsData = await sb(`team_stats?gameid=eq.${currentGameid}`); } catch (e) {} }
+function setStatsPeriod(per) { currentStatsPeriod = per; document.querySelectorAll(".stats-periods button").forEach((b, i) => { if (i === per) b.classList.add("active"); else b.classList.remove("active"); }); renderTeamStats(); }
+function renderStatRow(title, h, a, unit = "") { const total = Number(h) + Number(a); const hp = total > 0 ? (Number(h) / total * 100) : 50; const ap = total > 0 ? (Number(a) / total * 100) : 50; return `<div class="stat-row"><div class="stat-title">${title}</div><div class="stat-values"><span class="home">${h}${unit}</span><span class="away">${a}${unit}</span></div><div class="stat-bar"><div class="stat-bar-home" style="width:${hp}%"></div><div class="stat-bar-away" style="width:${ap}%"></div></div></div>`; }
+function renderPercentRow(title, h, a) { 
+  h = h || 0; a = a || 0; 
+  return `<div class="stat-row"><div class="stat-title">${title}</div><div class="stat-percent"><span class="home">${Number(h).toFixed(1)}%</span><span class="away">${Number(a).toFixed(1)}%</span></div></div>`; 
+}
+function renderTeamStats() { 
+  const container = document.getElementById("stats-content"); 
+  if (!teamStatsData) teamStatsData = []; 
+
+  let home = teamStatsData.find(s => s.team === homeTeam && s.period === currentStatsPeriod); 
+  let away = teamStatsData.find(s => s.team === visitorTeam && s.period === currentStatsPeriod); 
+  
+  if (!home || !away) { 
+    home = teamStatsData.find(s => s.team === homeTeam && s.period === 0); 
+    away = teamStatsData.find(s => s.team === visitorTeam && s.period === 0); 
+  }
+  
+  // ФОЛБЭК (если база пуста, подставляем счет)
+  if (!home || !away) { 
+    home = { g: currentMatchData?.home_goals || 0, sog: 0, hits: 0, bls: 0, tka: 0, p_intc: 0, gva: 0, pim: 0, ppgf: 0, pp_pct: 0, shgf: 0, pk_pct: 0 };
+    away = { g: currentMatchData?.visitor_goals || 0, sog: 0, hits: 0, bls: 0, tka: 0, p_intc: 0, gva: 0, pim: 0, ppgf: 0, pp_pct: 0, shgf: 0, pk_pct: 0 };
+  } 
+  
+  container.innerHTML = `<div class="stats-header"><span class="h">${homeTeam}</span><span class="a">${visitorTeam}</span></div>${renderStatRow("Голы", home.g || 0, away.g || 0)}${renderStatRow("Броски", home.sog || 0, away.sog || 0)}${renderStatRow("Силовые", home.hits || 0, away.hits || 0)}${renderStatRow("Блоки", home.bls || 0, away.bls || 0)}${renderStatRow("Отборы", home.tka || 0, away.tka || 0)}${renderStatRow("Перехваты", home.p_intc || 0, away.p_intc || 0)}${renderStatRow("Потери", home.gva || 0, away.gva || 0)}${renderStatRow("Штраф", home.pim || 0, away.pim || 0, " мин")}<div class="stat-divider">Спецбригады</div>${renderStatRow("Голы в бол.", home.ppgf || 0, away.ppgf || 0)}${renderPercentRow("Реализация бол.", home.pp_pct, away.pp_pct)}${renderStatRow("Голы в мен.", home.shgf || 0, away.shgf || 0)}${renderPercentRow("Нейтрализация мен.", home.pk_pct, away.pk_pct)}`; 
+}
+
+async function loadAllForCurrentGame() { await loadSeasonStats(); await loadRoster(); await loadGoals(); await loadPenalties(); await loadCommentary(); await loadFeed(); await loadShots(); await loadTeamStats(); }
+
+async function findLatestMatch() {
+  const urlParams = new URLSearchParams(window.location.search);
+  let activeGid = urlParams.get("gameid"), m = null;
+  if (activeGid) { const res = await sb(`matches?gameid=eq.${activeGid}&select=gameid,date,home,visitor,home_goals,visitor_goals,winner`); if (res && res.length > 0) m = res[0]; }
+  if (!m) { const res = await sb(`matches?select=gameid,date,home,visitor,home_goals,visitor_goals,winner&order=date.desc,gameid.desc&limit=1`); if (res && res.length > 0) m = res[0]; }
+  if (!m) return null;
+  currentGameid = m.gameid; homeTeam = m.home; visitorTeam = m.visitor; currentMatchData = m; updateHeaderTeams(m); return m;
+}
+
+async function switchMatch(gid) {
+  if (!gid) return;
+  const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?gameid=" + gid;
+  window.history.pushState({ path: newUrl }, '', newUrl);
+  currentGameid = gid; roster = {}; goalsData = {}; penaltiesData = {}; commentaryData = []; allShots = []; teamStatsData = null; lastMaxEventId = 0; isUpdating = false; lastShotsUpdate = 0;
+  document.getElementById("feed").innerHTML = '<div class="loading">Загрузка...</div>';
+  const m = await sb(`matches?gameid=eq.${gid}&select=gameid,home,visitor,home_goals,visitor_goals,winner`);
+  if (m && m[0]) { homeTeam = m[0].home; visitorTeam = m[0].visitor; currentMatchData = m[0]; updateHeaderTeams(m[0]); }
+  await loadAllForCurrentGame();
+}
+
+async function tick() {
+  if (isUpdating) return; isUpdating = true;
+  const safety = setTimeout(() => { isUpdating = false; }, 10000);
+  try {
+    if (!currentGameid) {
+      const m = await findLatestMatch();
+      if (m) { currentMatchData = m; await loadAllForCurrentGame(); }
+      else { document.getElementById("feed").innerHTML = '<div class="loading">Нет матчей.</div>'; }
+    } else {
+      const matches = await sb(`matches?gameid=eq.${currentGameid}&select=winner,home_goals,visitor_goals`);
+      if (matches && matches[0]) currentMatchData = { ...currentMatchData, ...matches[0] };
+      await loadGoals(); await loadFeed(); await loadCommentary();
+      if (Date.now() - lastShotsUpdate > 30000) {
+          await loadShots(); await loadRoster(); await loadTeamStats(); lastShotsUpdate = Date.now();
+          if (document.getElementById("map-container").classList.contains("active")) renderRink();
+          if (document.getElementById("stats-container").classList.contains("active")) renderTeamStats();
+      }
+    }
+    lastUpdateTime = Date.now(); document.getElementById("update-timer").textContent = "Обновлено только что";
+  } catch (e) { console.error("Ошибка в tick:", e); } finally { clearTimeout(safety); isUpdating = false; }
+}
+
+async function loadNews() {
+  try {
+    const TEAM_FULL = { "АВТ": "Автомобилист", "АКБ": "Ак Барс", "АДМ": "Адмирал", "АМР": "Амур", "АВГ": "Авангард", "БАР": "Барыс", "ДИН": "Динамо М", "ДМН": "Динамо Мн", "ЛАД": "Лада", "ЛОК": "Локомотив", "ММГ": "Металлург Мг", "НХК": "Нефтехимик", "САЛ": "Салават Юлаев", "СЕВ": "Северсталь", "СИБ": "Сибирь", "СКА": "СКА", "СПА": "Спартак", "ТОР": "Торпедо НН", "ТРК": "Трактор", "СОЧ": "ХК Сочи", "ЦСК": "ЦСКА", "ДРК": "Шанхай Дрэгонс", "ШДР": "Шанхай Дрэгонс" };
+
+    const hFull = TEAM_FULL[homeTeam] || homeTeam;
+    const vFull = TEAM_FULL[visitorTeam] || visitorTeam;
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    
+    // 1. Ищем командные новости за 7 дней
+    const teamQuery = `news?select=text,type,link,team&is_active=eq.true&or=(team.eq.${encodeURIComponent(hFull)},team.eq.${encodeURIComponent(vFull)})&pub_date=gte.${sevenDaysAgo}&order=pub_date.desc&limit=20`;
+    let teamNews = await sb(teamQuery) || [];
+
+    // 2. Ищем общие новости за 2 дня (для фолбэка)
+    let generalNews = [];
+    if (teamNews.length < 3) {
+      const generalQuery = `news?select=text,type,link,team&is_active=eq.true&team=is.null&pub_date=gte.${twoDaysAgo}&order=pub_date.desc&limit=10`;
+      generalNews = await sb(generalQuery) || [];
+    }
+
+    // Объединяем
+    const allNews = [...teamNews, ...generalNews];
+
+    const content = document.getElementById("ticker-content"); 
+    if (!content) return;
+    
+    if (allNews.length === 0) { 
+      content.innerHTML = `<span class="ticker-item">Свежих новостей пока нет</span>`; 
+      return; 
+    }
+
+    let html = allNews.map(n => {
+      let prefix = ""; let color = "#e6edf3"; 
+      
+      if (n.type === 'injury') { prefix = `🏥 [${n.team || 'Лазарет'}] `; color = "#f85149"; }
+      else if (n.type === 'interview') { prefix = `🎙️ [Интервью] `; color = "#58a6ff"; }
+      else if (n.team) { prefix = `🏒 [${n.team}] `; color = "#3fb950"; }
+      else { prefix = `🏒 [КХЛ] `; } // <--- ВОТ ЗДЕСЬ ДОБАВЛЕН ПРЕФИКС
+
+      return `<a class="ticker-item" href="${n.link || '#'}" target="_blank" style="color:${color}">${prefix}${n.text.replace(/</g, "&lt;")}</a>`;
+    }).join("");
+
+    // Лидеры
+    const topPlayers = Object.values(roster)
+        .filter(p => p.team === hFull || p.team === vFull)
+        .sort((a, b) => ((b.g||0) + (b.a||0)) - ((a.g||0) + (a.a||0)))
+        .slice(0, 3);
+
+    if (topPlayers.length > 0) {
+       topPlayers.forEach(p => {
+           if ((p.g || 0) + (p.a || 0) > 0) {
+               html += `<span class="ticker-item" style="color:#f0c040;">⭐ Лидеры: ${p.fullName} (${p.team}) — ${p.g}Г ${p.a}П</span>`;
+           }
+       });
+    }
+
+    content.innerHTML = html;
+  } catch (e) { console.error("Ошибка новостей:", e); }
+}
+
+async function initApp() { 
+  await tick(); // <--- Сначала загружаем матч (узнаем команды)
+  loadNews();   // <--- Теперь грузим новости (когда уже знаем, кто играет)
+  setInterval(tick, 15000); 
+  setInterval(loadNews, 300000); 
+}
+initApp();
+</script>
+</body>
+</html>
