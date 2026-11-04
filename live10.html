@@ -146,6 +146,17 @@
   <div class="score-center"><div class="score-numbers"><span id="score-home">0</span><span class="score-divider">:</span><span id="score-away">0</span></div><div class="period-time" id="period-block"><span class="live-dot" id="live-dot"></span><span id="tv-period">Загрузка...</span></div></div>
   <div class="team-side away-side"><div class="sog-box"><span>БР</span><b id="away-sog">-</b></div><img id="visitor-logo" class="tiny-logo" style="display:none;"><span class="team-code" id="visitor-code">...</span></div>
 </div>
+<div id="period-breakdown" class="period-breakdown" style="display:none; max-width: 800px; margin: 5px auto 0; padding: 0 12px; width: 100%;">
+  <div style="background: var(--card); border-radius: 8px; padding: 10px 15px; display: flex; justify-content: space-between; font-size: 14px; font-weight: 700;">
+    <div id="pb-home" style="color: var(--home); width: 30%; text-align: left;">-</div>
+    <div id="pb-periods" style="color: var(--muted); display: flex; gap: 15px; justify-content: center; width: 40%;">
+      <span id="pb-p1">1-й: 0-0</span>
+      <span id="pb-p2">2-й: 0-0</span>
+      <span id="pb-p3">3-й: 0-0</span>
+    </div>
+    <div id="pb-visitor" style="color: var(--visitor); width: 30%; text-align: right;">-</div>
+  </div>
+</div>
 
 <div class="timeline-container" id="timeline-container"><div class="timeline-wrapper"><div class="timeline-bar" id="timeline-bar"></div><div class="tl-time-labels" id="tl-labels"></div></div></div>
 
@@ -266,42 +277,134 @@ async function loadCommentary() { if (!currentGameid) return; try { commentaryDa
 async function loadFeed() {
   if (!currentGameid) return;
   try {
-    const events = await sb(`game_legend?gameid=eq.${currentGameid}&order=period.desc,time_ms.desc&limit=500`);
+    // 1. Запрашиваем события и комментарии
+    const events = await sb(`game_legend?gameid=eq.${currentGameid}&order=period.desc,time_ms.desc&limit=500`) || [];
+    const commentaries = await sb(`commentary?gameid=eq.${currentGameid}&order=id.desc&limit=50`) || [];
+    commentaryData = commentaries; // Сохраняем для других нужд
+
     const feed = document.getElementById("feed");
-    if (!events || events.length === 0) { feed.innerHTML = '<div class="loading">Событий пока нет...</div>'; return; }
-    const maxPeriod = Math.max(...events.map(e => e.period));
+    if (events.length === 0 && commentaries.length === 0) { 
+        feed.innerHTML = '<div class="loading">Событий пока нет...</div>'; 
+        return; 
+    }
+    
+    // 2. Считаем статистику по шапке (по событиям)
+    const maxPeriod = events.length > 0 ? Math.max(...events.map(e => e.period)) : 1;
     updateHeaderStats(events, maxPeriod);
-    let commentaryHtml = commentaryData.map(c => `<div class="event" style="border-left:3px solid ${c.priority ? '#f0c040' : '#58a6ff'};background:${c.priority ? 'rgba(240,192,64,0.08)' : 'rgba(88,166,255,0.05)'};margin-bottom:8px;"><div class="time">${c.time_ms || '—'}</div><div class="icon">${c.priority ? '🔥' : '💬'}</div><div class="event-body"><div class="event-title">${c.priority ? 'ВАЖНО' : 'КОММЕНТАРИЙ'}</div><div class="event-details">${c.text.replace(/</g, "&lt;")}</div><div class="assists" style="font-size:11px;">${c.author || 'Оператор'}, ${c.period}-й период</div></div></div>`).join('');
-    const eventsHtml = events.map(e => {
-      const isGoal = e.type === "goal", isA = e.team_ab === "A", teamClass = isA ? "team-a-text" : "team-b-text", teamName = isA ? homeTeam : visitorTeam;
-      let playerName = "";
-      if (e.jn && e.jn !== "0") { const pObj = roster[`${e.team_ab}_${cleanNum(e.jn)}`]; if (pObj) playerName = `<b class="player-link" onclick="showPlayerModal('${e.team_ab}', '${cleanNum(e.jn)}')">${pObj.name}</b>`; else playerName = `№${e.jn}`; }
-      let icon = "", title = "", details = "", extraHtml = "";
-      switch (e.type) {
-        case "goal": {
-          icon = "🚨"; title = "ГОЛ!"; details = `<span class="${teamClass}">${teamName}</span> ${playerName}`; const gKey = `${e.period}_${e.time_ms}`; 
-          if (goalsData[gKey]) { const g = goalsData[gKey]; const a1 = g.assist_1 ? `<b>${g.assist_1.split(" ")[0]}</b>` : null; const a2 = g.assist_2 ? `<b>${g.assist_2.split(" ")[0]}</b>` : null; if (a1 || a2) extraHtml = `<div class="assists">Ассисты: ${[a1, a2].filter(Boolean).join(', ')}</div>`; else extraHtml = `<div class="assists">Ассисты уточняются...</div>`; if (g.score_a !== undefined) extraHtml += `<div class="score-after">Счёт: ${g.score_a} : ${g.score_b}</div>`; } break;
+
+    // 3. Объединяем всё в один массив для сортировки
+    let unifiedFeed = [];
+
+    // Добавляем комментарии
+    commentaries.forEach(c => {
+      unifiedFeed.push({
+        feedType: 'commentary',
+        period: Number(c.period) || 0,
+        time_ms: c.time_ms || "00:00",
+        sortTime: (Number(c.period) || 0) * 3600 + parseTimeStr(c.time_ms),
+        data: c
+      });
+    });
+
+    // Добавляем события
+    events.forEach(e => {
+      unifiedFeed.push({
+        feedType: 'event',
+        period: Number(e.period) || 0,
+        time_ms: e.time_ms,
+        sortTime: (Number(e.period) || 0) * 3600 + parseTimeStr(e.time_ms),
+        data: e
+      });
+    });
+
+    // 4. Сортируем по убыванию времени (сначала самые свежие)
+    unifiedFeed.sort((a, b) => b.sortTime - a.sortTime);
+
+    // 5. Рендерим
+    const unifiedHtml = unifiedFeed.map(item => {
+      if (item.feedType === 'commentary') {
+        const c = item.data;
+        return `<div class="event" style="border-left:3px solid ${c.priority ? '#f0c040' : '#58a6ff'};background:${c.priority ? 'rgba(240,192,64,0.08)' : 'rgba(88,166,255,0.05)'};margin-bottom:8px;">
+          <div class="time">${c.time_ms || '—'}</div>
+          <div class="icon">${c.priority ? '🔥' : '💬'}</div>
+          <div class="event-body">
+            <div class="event-title">${c.priority ? 'ВАЖНО' : 'КОММЕНТАРИЙ'}</div>
+            <div class="event-details">${c.text.replace(/</g, "&lt;")}</div>
+            <div class="assists" style="font-size:11px;">${c.author || 'Оператор'}, ${c.period}-й период</div>
+          </div>
+        </div>`;
+      } else {
+        // Твой старый код рендера событий (goal, shot, block и т.д.)
+        const e = item.data;
+        const isGoal = e.type === "goal", isA = e.team_ab === "A", teamClass = isA ? "team-a-text" : "team-b-text", teamName = isA ? homeTeam : visitorTeam;
+        let playerName = "";
+        if (e.jn && e.jn !== "0") { const pObj = roster[`${e.team_ab}_${cleanNum(e.jn)}`]; if (pObj) playerName = `<b class="player-link" onclick="showPlayerModal('${e.team_ab}', '${cleanNum(e.jn)}')">${pObj.name}</b>`; else playerName = `№${e.jn}`; }
+        
+        let icon = "", title = "", details = "", extraHtml = "";
+        
+        switch (e.type) {
+          case "goal": {
+            icon = "🚨"; title = "ГОЛ!"; details = `<span class="${teamClass}">${teamName}</span> ${playerName}`; 
+            const gKey = `${e.period}_${e.time_ms}`; 
+            if (goalsData[gKey]) { 
+                const g = goalsData[gKey]; 
+                const a1 = g.assist_1 ? `<b>${g.assist_1.split(" ")[0]}</b>` : null; 
+                const a2 = g.assist_2 ? `<b>${g.assist_2.split(" ")[0]}</b>` : null; 
+                if (a1 || a2) extraHtml = `<div class="assists">Ассисты: ${[a1, a2].filter(Boolean).join(', ')}</div>`; 
+                if (g.score_a !== undefined) extraHtml += `<div class="score-after">Счёт: ${g.score_a} : ${g.score_b}</div>`; 
+            } 
+            break;
+          }
+          case "shot": { if (e.result === "miss") return ""; icon = "🎯"; title = "Бросок"; details = `${playerName} (${teamName})`; break; }
+          case "block": { icon = "🛡"; title = "Блок"; details = `${playerName} (${teamName})`; break; }
+          case "goalkeeper": { icon = "🧤"; title = "Смена вратаря"; details = teamName; break; }
+          case "timeout": { icon = "⏸"; title = "Тайм-аут"; details = teamName; break; }
+          case "penalty": {
+            icon = "🟨"; title = "Удаление"; 
+            let penPlayer = playerName; let penExtra = "";
+            const penData = penaltiesData.find(p => String(p.period) === String(e.period) && String(p.time) === String(e.time_ms));
+            if (penData) { if (penData.player) penPlayer = `<b>${penData.player.split(" ")[0]}</b>`; if (penData.minutes) penExtra += `<b>${penData.minutes} мин.</b> `; if (penData.reason) penExtra += `— ${penData.reason}`; } 
+            else { const raw = parseExtra(e.extra); if (raw.mins) penExtra += `<b>${raw.mins} мин.</b> `; penExtra += `<span style="color:#484f58;">— Причина уточняется</span>`; }
+            const oppTeam = isA ? visitorTeam : homeTeam; const oppPP = seasonStats[oppTeam]?.pp_pct ? Number(seasonStats[oppTeam].pp_pct).toFixed(0) : null;
+            if (oppPP) penExtra += `<br><span style="color:#8b949e; font-size:12px;">Реализация бол. ${TEAM_CODES[oppTeam] || oppTeam}: ${oppPP}%</span>`;
+            details = `${penPlayer} (${teamName})`; extraHtml = `<div class="assists" style="color:#f0c040;">${penExtra}</div>`; 
+            break;
+          }
+          case "action": { if (e.result === "hit") { icon = "💥"; title = "Силовой"; details = `${playerName} (${teamName})`; } else return ""; break; }
+          default: return "";
         }
-        case "shot": { if (e.result === "miss") return ""; icon = "🎯"; title = "Бросок"; details = `${playerName} (${teamName})`; break; }
-        case "block": { icon = "🛡"; title = "Блок"; details = `${playerName} (${teamName})`; break; }
-        case "goalkeeper": { icon = "🧤"; title = "Смена вратаря"; details = teamName; break; }
-        case "timeout": { icon = "⏸"; title = "Тайм-аут"; details = teamName; break; }
-        case "penalty": {
-          icon = "🟨"; title = "Удаление"; let penPlayer = playerName; let penExtra = "";
-          const penData = penaltiesData.find(p => String(p.period) === String(e.period) && String(p.time) === String(e.time_ms));
-          if (penData) { if (penData.player) penPlayer = `<b>${penData.player.split(" ")[0]}</b>`; if (penData.minutes) penExtra += `<b>${penData.minutes} мин.</b> `; if (penData.reason) penExtra += `— ${penData.reason}`; } else { const raw = parseExtra(e.extra); if (raw.mins) penExtra += `<b>${raw.mins} мин.</b> `; penExtra += `<span style="color:#484f58;">— Причина уточняется</span>`; }
-          const oppTeam = isA ? visitorTeam : homeTeam; const oppPP = seasonStats[oppTeam]?.pp_pct ? Number(seasonStats[oppTeam].pp_pct).toFixed(0) : null;
-          if (oppPP) penExtra += `<br><span style="color:#8b949e; font-size:12px;">Реализация бол. ${TEAM_CODES[oppTeam] || oppTeam}: ${oppPP}%</span>`;
-          details = `${penPlayer} (${teamName})`; extraHtml = `<div class="assists" style="color:#f0c040;">${penExtra}</div>`; break;
-        }
-        case "action": { if (e.result === "hit") { icon = "💥"; title = "Силовой"; details = `${playerName} (${teamName})`; } else return ""; break; }
-        default: return "";
+        if (!details) return "";
+        return `<div class="event ${isGoal ? 'goal' : ''}"><div class="time">${e.time_ms}</div><div class="icon">${icon}</div><div class="event-body"><div class="event-title">${title}</div><div class="event-details">${details}</div>${extraHtml}</div></div>`;
       }
-      if (!details) return "";
-      return `<div class="event ${isGoal ? 'goal' : ''}"><div class="time">${e.time_ms}</div><div class="icon">${icon}</div><div class="event-body"><div class="event-title">${title}</div><div class="event-details">${details}</div>${extraHtml}</div></div>`;
     }).join('');
-    feed.innerHTML = commentaryHtml + eventsHtml;
-  } catch (err) {}
+
+    feed.innerHTML = unifiedHtml;
+  } catch (err) { 
+    console.error("Ошибка в loadFeed:", err); 
+  }
+  // Считаем голы по периодам
+  let p1_h = 0, p1_v = 0, p2_h = 0, p2_v = 0, p3_h = 0, p3_v = 0;
+  
+  Object.values(goalsData).forEach(g => {
+    if (g.team === homeTeam) {
+      if (g.period === 1) p1_h++; else if (g.period === 2) p2_h++; else if (g.period === 3) p3_h++;
+    } else if (g.team === visitorTeam) {
+      if (g.period === 1) p1_v++; else if (g.period === 2) p2_v++; else if (g.period === 3) p3_v++;
+    }
+  });
+
+  // Обновляем плашку, если есть голы
+  if (Object.keys(goalsData).length > 0) {
+    const pbContainer = document.getElementById("period-breakdown");
+    if (pbContainer) {
+      pbContainer.style.display = "block";
+      document.getElementById("pb-home").textContent = homeTeam;
+      document.getElementById("pb-visitor").textContent = visitorTeam;
+      document.getElementById("pb-p1").textContent = `1-й: ${p1_h} - ${p1_v}`;
+      document.getElementById("pb-p2").textContent = `2-й: ${p2_h} - ${p2_v}`;
+      document.getElementById("pb-p3").textContent = `3-й: ${p3_h} - ${p3_v}`;
+    }
+  }
 }
 
 function updateHeaderStats(events, maxPeriod) {
