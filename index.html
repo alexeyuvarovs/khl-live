@@ -38,13 +38,10 @@
   .conf-title { font-size: 18px; font-weight: 900; margin-bottom: 10px; color: #fff; }
   .standings { width: 100%; border-collapse: collapse; font-size: 14px; text-align: center; white-space: nowrap; }
   .standings th { padding: 8px 4px; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--border); }
-  .standings td { padding: 10px 4px; border-bottom: 1px solid #21262d; }
+  .standings td { padding: 9px 4px; border-bottom: 1px solid #21262d; }
   .standings tr:hover { background: #21262d; }
-  .st-team { text-align: left; display: flex; align-items: center; gap: 8px; min-width: 140px; }
+  .st-team { text-align: left; display: flex; align-items: center; gap: 8px; min-width: 130px; }
   .st-logo { width: 20px; height: 20px; object-fit: contain; }
-  .form-dots { display: flex; gap: 2px; justify-content: center; }
-  .f-dot { width: 10px; height: 10px; border-radius: 50%; }
-  .f-w { background: var(--win); } .f-l { background: var(--lose); }
 
   /* Бегущая строка */
   .ticker-wrap { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #000; border-top: 1px solid #30363d; z-index: 99999; display: flex; overflow: hidden; align-items: center; }
@@ -56,8 +53,6 @@
   @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 </style>
 
-метрика.txt
-100 %
 <!-- Yandex.Metrika counter -->
 <script type="text/javascript">
     (function(m,e,t,r,i,k,a){
@@ -108,9 +103,16 @@ function getLogoHtml(team) { return TEAM_LOGOS[team] ? `<img src="${SUPABASE_STO
 
 function switchMainTab(tab) {
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  document.getElementById("tab-matches").style.display = "none"; document.getElementById("tab-tables").classList.remove("active");
-  if (tab === 'matches') { document.querySelectorAll(".tab")[0].classList.add("active"); document.getElementById("tab-matches").style.display = "block"; }
-  else { document.querySelectorAll(".tab")[1].classList.add("active"); document.getElementById("tab-tables").classList.add("active"); }
+  document.getElementById("tab-matches").style.display = "none";
+  document.getElementById("tab-tables").classList.remove("active");
+  if (tab === 'matches') {
+    document.querySelectorAll(".tab")[0].classList.add("active");
+    document.getElementById("tab-matches").style.display = "block";
+  } else {
+    document.querySelectorAll(".tab")[1].classList.add("active");
+    document.getElementById("tab-tables").classList.add("active");
+    loadStandings(); // подтягиваем свежие данные при каждом открытии вкладки
+  }
 }
 
 async function loadMatches() {
@@ -134,67 +136,102 @@ async function loadMatches() {
   } catch (e) { list.innerHTML = `<div class="loading" style="color:#f85149;">Ошибка: ${e.message}</div>`; }
 }
 
+/* ================= ТУРНИРНАЯ ТАБЛИЦА (из Supabase `standings`) ================= */
 async function loadStandings() {
-  try {
-    const matches = await sb(`matches?select=home,visitor,home_goals,visitor_goals,winner,win_type&order=date.desc`);
-    if (!matches) return;
-    const stats = {}; [...WEST, ...EAST].forEach(t => stats[t] = { gp:0, w:0, vo:0, vb:0, po:0, pb:0, l:0, pts:0, gf:0, ga:0, form:[] });
-    matches.reverse().forEach(m => {
-      if (m.winner === null) return;
-      const h = m.home, v = m.visitor, hg = m.home_goals || 0, vg = m.visitor_goals || 0, isOt = ["OT", "ОТ"].includes(m.win_type), isSo = ["SO", "Б", "БУЛ"].includes(m.win_type);
-      if (!stats[h] || !stats[v]) return;
-      stats[h].gp++; stats[v].gp++; stats[h].gf += hg; stats[h].ga += vg; stats[v].gf += vg; stats[v].ga += hg;
-      if (m.winner === h) {
-        stats[h].w++; stats[v].l++;
-        if (isOt) { stats[h].vo++; stats[v].po++; } else if (isSo) { stats[h].vb++; stats[v].pb++; }
-        stats[h].pts += 2; if (isOt || isSo) stats[v].pts += 1; 
-        if (stats[h].form.length < 5) stats[h].form.push(1); if (stats[v].form.length < 5) stats[v].form.push(0);
-      } else {
-        stats[v].w++; stats[h].l++;
-        if (isOt) { stats[v].vo++; stats[h].po++; } else if (isSo) { stats[v].vb++; stats[h].pb++; }
-        stats[v].pts += 2; if (isOt || isSo) stats[h].pts += 1;
-        if (stats[v].form.length < 5) stats[v].form.push(1); if (stats[h].form.length < 5) stats[h].form.push(0);
-      }
+  const tableWest = document.getElementById("table-west");
+  const tableEast = document.getElementById("table-east");
+  const data = await sb(`standings?select=*&order=pts.desc`);
+
+  if (!data || data.length === 0) {
+    const msg = `<tbody><tr><td colspan="13" style="text-align:center;color:#8b949e;padding:20px;">Турнирная таблица ещё не загружена.<br>Запустите <b>updateStandings()</b> в Apps Script.</td></tr></tbody>`;
+    tableWest.innerHTML = msg;
+    tableEast.innerHTML = msg;
+    return;
+  }
+
+  // Раскладываем по конференциям (с фолбэком на WEST/EAST, если поле пустое)
+  const westRows = [], eastRows = [];
+  data.forEach(t => {
+    const conf = (t.conference || "").toLowerCase();
+    let isWest = conf.includes("запад") || conf.includes("west");
+    let isEast = conf.includes("восток") || conf.includes("east");
+    if (!isWest && !isEast) {
+      isWest = WEST.includes(t.team);
+      isEast = EAST.includes(t.team);
+    }
+    if (isWest) westRows.push(t);
+    else if (isEast) eastRows.push(t);
+  });
+
+  const renderConf = (rows, tableEl) => {
+    rows.sort((a, b) =>
+      (b.pts || 0) - (a.pts || 0) ||
+      (b.w || 0) - (a.w || 0) ||
+      ((b.gf || 0) - (b.ga || 0)) - ((a.gf || 0) - (a.ga || 0))
+    );
+
+    let html = `<thead><tr>
+      <th>№</th>
+      <th style="text-align:left">Команда</th>
+      <th>И</th>
+      <th>В</th>
+      <th>ВО</th>
+      <th>ВБ</th>
+      <th>ПБ</th>
+      <th>ПО</th>
+      <th>П</th>
+      <th>О</th>
+      <th>ГЗ</th>
+      <th>ГП</th>
+      <th>РГ</th>
+    </tr></thead><tbody>`;
+
+    rows.forEach((t, i) => {
+      const rg = (t.gf || 0) - (t.ga || 0);
+      const rgStr = rg > 0 ? "+" + rg : String(rg);
+      html += `<tr>
+        <td>${i + 1}</td>
+        <td><div class="st-team">${getLogoHtml(t.team).replace('mc-logo', 'st-logo')} ${t.team}</div></td>
+        <td>${t.gp || 0}</td>
+        <td>${t.w || 0}</td>
+        <td>${t.otw || 0}</td>
+        <td>${t.sow || 0}</td>
+        <td>${t.sol || 0}</td>
+        <td>${t.otl || 0}</td>
+        <td>${t.l || 0}</td>
+        <td style="font-weight:900;color:#fff;">${t.pts || 0}</td>
+        <td>${t.gf || 0}</td>
+        <td>${t.ga || 0}</td>
+        <td>${rgStr}</td>
+      </tr>`;
     });
-    const renderConf = (teams, tableId) => {
-      const table = document.getElementById(tableId);
-      const sorted = teams.map(t => ({ name: t, ...stats[t] })).sort((a, b) => b.pts - a.pts || b.w - a.w || (b.gf - b.ga) - (a.gf - a.ga));
-      let html = `<thead><tr><th>№</th><th style="text-align:left">Команда</th><th>И</th><th>В</th><th>П</th><th>О</th><th>ГЗ</th><th>ГП</th><th>РГ</th><th>Форма</th></tr></thead><tbody>`;
-      sorted.forEach((t, i) => {
-        const rg = t.gf - t.ga, formHtml = t.form.map(f => `<div class="f-dot ${f ? 'f-w' : 'f-l'}"></div>`).join("");
-        html += `<tr><td>${i + 1}</td><td><div class="st-team">${getLogoHtml(t.name).replace('mc-logo', 'st-logo')} ${t.name}</div></td><td>${t.gp}</td><td>${t.w}</td><td>${t.l}</td><td style="font-weight:900; color:#fff;">${t.pts}</td><td>${t.gf}</td><td>${t.ga}</td><td>${rg > 0 ? '+' + rg : rg}</td><td><div class="form-dots">${formHtml}</div></td></tr>`;
-      });
-      table.innerHTML = html + "</tbody>";
-    };
-    renderConf(WEST, "table-west"); renderConf(EAST, "table-east");
-  } catch (e) {}
+    tableEl.innerHTML = html + "</tbody>";
+  };
+
+  renderConf(westRows, tableWest);
+  renderConf(eastRows, tableEast);
 }
+/* ============================================================================== */
 
 async function loadNews() {
   try {
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-    
-    // Запрашиваем: либо свежие за 2 дня, либо любые травмы
     const query = `news?select=text,type,link,team&is_active=eq.true&or=(pub_date.gte.${twoDaysAgo},type.eq.injury)&order=pub_date.desc&limit=30`;
-    
     const news = await sb(query);
-    const content = document.getElementById("ticker-content"); 
+    const content = document.getElementById("ticker-content");
     if (!content) return;
-    
-    if (!news || news.length === 0) { 
-      content.innerHTML = '<span class="ticker-item">Свежих новостей пока нет</span>'; 
-      return; 
+    if (!news || news.length === 0) {
+      content.innerHTML = '<span class="ticker-item">Свежих новостей пока нет</span>';
+      return;
     }
-
     content.innerHTML = news.map(n => {
       let prefix = "";
       if (n.type === 'injury') prefix = `🏥 [${n.team || 'Лазарет'}] `;
       else if (n.type === 'interview') prefix = `🎙️ [Интервью] `;
       else prefix = `🏒 `;
-
       return `<a class="ticker-item" href="${n.link || '#'}" target="_blank">${prefix}${n.text.replace(/</g, "&lt;")}</a>`;
     }).join("");
-  } catch (e) { 
+  } catch (e) {
     console.error("Ошибка новостей:", e);
   }
 }
