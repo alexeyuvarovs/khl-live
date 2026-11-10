@@ -50,7 +50,6 @@
   .form-dots { display: flex; gap: 4px; justify-content: center; }
   .f-dot { width: 10px; height: 10px; border-radius: 50%; }
   .f-w { background: var(--win); } .f-l { background: var(--lose); }
-  /* Линия плей-офф после 8-го места */
   tr.playoff-line td { border-bottom: 2px solid #484f58; }
 
   /* Бегущая строка */
@@ -62,20 +61,6 @@
   .ticker-item:hover { color: #58a6ff; }
   @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 </style>
-
-<!-- Yandex.Metrika counter -->
-<script type="text/javascript">
-    (function(m,e,t,r,i,k,a){
-        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-        m[i].l=1*new Date();
-        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=114071636', 'ym');
-
-    ym(114071636, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
-</script>
-<noscript><div><img src="https://mc.yandex.ru/watch/114071636" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
-<!-- /Yandex.Metrika counter -->
 </head>
 <body>
 <div class="container">
@@ -108,7 +93,17 @@ const TEAM_LOGOS = { "Ак Барс": "53.png", "Адмирал": "418.png", "А
 const WEST = ["Локомотив", "ЦСКА", "Шанхай Дрэгонс", "Торпедо НН", "Спартак", "Северсталь", "Динамо Мн", "СКА", "Динамо М", "ХК Сочи", "Лада"];
 const EAST = ["Металлург Мг", "Нефтехимик", "Ак Барс", "Амур", "Барыс", "Салават Юлаев", "Автомобилист", "Адмирал", "Трактор", "Авангард", "Сибирь"];
 
-async function sb(path) { try { const r = await fetch(`${SUPABASE}/rest/v1/${path}`, { headers: { "apikey": KEY, "Authorization": "Bearer " + KEY } }); return r.ok ? r.json() : null; } catch(e) { return null; } }
+async function sb(path) { 
+  try { 
+    const r = await fetch(`${SUPABASE}/rest/v1/${path}`, { headers: { "apikey": KEY, "Authorization": "Bearer " + KEY } }); 
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return await r.json(); 
+  } catch(e) { 
+    console.error("Ошибка Supabase [" + path + "]:", e);
+    return null; 
+  } 
+}
+
 function formatDate(d) { if(!d) return ""; const p = d.split("-"); return `${p[2]}.${p[1]}`; }
 function getLogoHtml(team) { return TEAM_LOGOS[team] ? `<img src="${SUPABASE_STORAGE}${TEAM_LOGOS[team]}" class="mc-logo" onerror="this.style.display='none'">` : ""; }
 
@@ -122,20 +117,30 @@ function switchMainTab(tab) {
   } else {
     document.querySelectorAll(".tab")[1].classList.add("active");
     document.getElementById("tab-tables").classList.add("active");
-    loadStandings(); // Обновляем данные при каждом открытии
+    loadStandings();
   }
 }
 
 async function loadMatches() {
   const TEAM_FULL = { "АВТ": "Автомобилист", "АКБ": "Ак Барс", "АДМ": "Адмирал", "АМР": "Амур", "АВГ": "Авангард", "БАР": "Барыс", "ДИН": "Динамо М", "ДМН": "Динамо Мн", "ЛАД": "Лада", "ЛОК": "Локомотив", "ММГ": "Металлург Мг", "НХК": "Нефтехимик", "САЛ": "Салават Юлаев", "СЕВ": "Северсталь", "СИБ": "Сибирь", "СКА": "СКА", "СПА": "Спартак", "ТОР": "Торпедо НН", "ТРК": "Трактор", "СОЧ": "ХК Сочи", "ЦСК": "ЦСКА", "ДРК": "Шанхай Дрэгонс", "ШДР": "Шанхай Дрэгонс" };
   const list = document.getElementById("matches-list"), mainBtn = document.getElementById("main-btn");
+  
   try {
     const matches = await sb(`matches?select=gameid,date,home,visitor,home_goals,visitor_goals,winner&order=date.desc,gameid.desc&limit=15`);
-    if (!matches || matches.length === 0) { list.innerHTML = '<div class="loading">Нет матчей в базе.</div>'; mainBtn.style.display = "none"; return; }
+    if (!matches || matches.length === 0) { 
+      list.innerHTML = '<div class="loading">Нет матчей в базе.</div>'; 
+      mainBtn.style.display = "none"; 
+      return; 
+    }
+    
     const today = new Date(), todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
     let activeMatch = matches.find(m => m.date === todayStr && m.winner === null) || matches[0];
     let isLive = (activeMatch.date === todayStr && activeMatch.winner === null);
-    mainBtn.style.display = "block"; mainBtn.href = `live10.html?gameid=${activeMatch.gameid}`; mainBtn.className = isLive ? "main-btn live" : "main-btn";
+    
+    mainBtn.style.display = "block"; 
+    mainBtn.href = `live10.html?gameid=${activeMatch.gameid}`; 
+    mainBtn.className = isLive ? "main-btn live" : "main-btn";
+    
     const aHome = TEAM_FULL[activeMatch.home] || activeMatch.home, aVis = TEAM_FULL[activeMatch.visitor] || activeMatch.visitor;
     mainBtn.innerHTML = isLive ? `🔴 Смотреть LIVE: ${aHome} — ${aVis}` : `▶ Смотреть последний матч: ${aHome} — ${aVis}`;
 
@@ -144,108 +149,113 @@ async function loadMatches() {
       const homeName = TEAM_FULL[m.home] || m.home, visName = TEAM_FULL[m.visitor] || m.visitor;
       return `<a href="live10.html?gameid=${m.gameid}" class="match-card ${isMlive ? 'is-live' : ''}"><div class="mc-team">${getLogoHtml(homeName)}<span class="mc-name">${homeName}</span></div><div class="mc-center"><div class="mc-score">${score}</div><div class="mc-status ${isMlive ? 'live-text' : ''}">${isMlive ? 'LIVE' : (m.winner ? 'Завершён' : 'Скоро')}</div></div><div class="mc-team away"><span class="mc-name">${visName}</span>${getLogoHtml(visName)}</div><div class="mc-date">${formatDate(m.date)}</div></a>`;
     }).join("");
-  } catch (e) { list.innerHTML = `<div class="loading" style="color:#f85149;">Ошибка: ${e.message}</div>`; }
+  } catch (e) { 
+    console.error(e);
+    list.innerHTML = `<div class="loading" style="color:#f85149;">Ошибка матчей: ${e.message}</div>`; 
+  }
 }
 
-/* ================= ТУРНИРНАЯ ТАБЛИЦА ================= */
 async function loadStandings() {
   const tableWest = document.getElementById("table-west");
   const tableEast = document.getElementById("table-east");
   
-  // 1. Запрашиваем официальную таблицу
-  const data = await sb(`standings?select=*`);
-  
-  if (!data || data.length === 0) {
-    const msg = `<tbody><tr><td colspan="12" style="text-align:center;color:#8b949e;padding:20px;">Турнирная таблица ещё не загружена.<br>Запустите <b>updateStandings()</b> в Apps Script.</td></tr></tbody>`;
-    tableWest.innerHTML = msg;
-    tableEast.innerHTML = msg;
-    return;
-  }
-
-  // 2. Запрашиваем матчи для расчета "Формы" (последние 5 игр)
-  const matches = await sb(`matches?select=home,visitor,winner&order=date.desc`) || [];
-  const formMap = {};
-  [...WEST, ...EAST].forEach(t => formMap[t] = []);
-  
-  matches.reverse().forEach(m => {
-    if (m.winner === null) return;
-    const h = m.home, v = m.visitor;
-    if (!formMap[h] || !formMap[v]) return;
-    if (m.winner === h) {
-      if (formMap[h].length < 5) formMap[h].push(1);
-      if (formMap[v].length < 5) formMap[v].push(0);
-    } else if (m.winner === v) {
-      if (formMap[v].length < 5) formMap[v].push(1);
-      if (formMap[h].length < 5) formMap[h].push(0);
+  try {
+    const data = await sb(`standings?select=*`);
+    
+    if (!data || data.length === 0) {
+      const msg = `<tbody><tr><td colspan="12" style="text-align:center;color:#8b949e;padding:20px;">Нет данных. Запустите updateStandings() в Apps Script.</td></tr></tbody>`;
+      tableWest.innerHTML = msg;
+      tableEast.innerHTML = msg;
+      return;
     }
-  });
 
-  // 3. Раскладываем по конференциям
-  const westRows = [], eastRows = [];
-  data.forEach(t => {
-    const conf = (t.conference || "").toLowerCase();
-    let isWest = conf.includes("запад") || conf.includes("west");
-    let isEast = conf.includes("восток") || conf.includes("east");
-    if (!isWest && !isEast) {
-      isWest = WEST.includes(t.team);
-      isEast = EAST.includes(t.team);
-    }
-    if (isWest) westRows.push(t);
-    else if (isEast) eastRows.push(t);
-  });
-
-  const renderConf = (rows, tableEl) => {
-    rows.sort((a, b) =>
-      (b.pts || 0) - (a.pts || 0) ||
-      (b.w || 0) - (a.w || 0) ||
-      ((b.gf || 0) - (b.ga || 0)) - ((a.gf || 0) - (a.ga || 0))
-    );
-
-    let html = `<thead><tr>
-      <th>№</th>
-      <th style="text-align:left; padding-left:10px;">Команда</th>
-      <th>О</th>
-      <th>И</th>
-      <th>В</th>
-      <th>ВО</th>
-      <th>ВБ</th>
-      <th>ПБ</th>
-      <th>ПО</th>
-      <th>П</th>
-      <th>Ш</th>
-      <th>Последние матчи</th>
-    </tr></thead><tbody>`;
-
-    rows.forEach((t, i) => {
-      const isPlayoffLine = (i === 7); // Линия плей-офф после 8-го места
-      const form = formMap[t.team] || [];
-      const formHtml = form.map(f => `<div class="f-dot ${f ? 'f-w' : 'f-l'}"></div>`).join("");
-      const goalsStr = `${t.gf || 0}-${t.ga || 0}`;
-      
-      const trClass = isPlayoffLine ? 'playoff-line' : '';
-      
-      html += `<tr class="${trClass}">
-        <td class="rank">${i + 1}</td>
-        <td><div class="st-team">${getLogoHtml(t.team).replace('mc-logo', 'st-logo')} ${t.team}</div></td>
-        <td class="pts">${t.pts || 0}</td>
-        <td>${t.gp || 0}</td>
-        <td>${t.w || 0}</td>
-        <td>${t.otw || 0}</td>
-        <td>${t.sow || 0}</td>
-        <td>${t.sol || 0}</td>
-        <td>${t.otl || 0}</td>
-        <td>${t.l || 0}</td>
-        <td>${goalsStr}</td>
-        <td><div class="form-dots">${formHtml}</div></td>
-      </tr>`;
+    const matches = await sb(`matches?select=home,visitor,winner&order=date.desc`) || [];
+    const formMap = {};
+    [...WEST, ...EAST].forEach(t => formMap[t] = []);
+    
+    matches.reverse().forEach(m => {
+      if (m.winner === null) return;
+      const h = m.home, v = m.visitor;
+      if (!formMap[h] || !formMap[v]) return;
+      if (m.winner === h) {
+        if (formMap[h].length < 5) formMap[h].push(1);
+        if (formMap[v].length < 5) formMap[v].push(0);
+      } else if (m.winner === v) {
+        if (formMap[v].length < 5) formMap[v].push(1);
+        if (formMap[h].length < 5) formMap[h].push(0);
+      }
     });
-    tableEl.innerHTML = html + "</tbody>";
-  };
 
-  renderConf(westRows, tableWest);
-  renderConf(eastRows, tableEast);
+    const westRows = [], eastRows = [];
+    data.forEach(t => {
+      const conf = (t.conference || "").toLowerCase();
+      let isWest = conf.includes("запад") || conf.includes("west");
+      let isEast = conf.includes("восток") || conf.includes("east");
+      if (!isWest && !isEast) {
+        isWest = WEST.includes(t.team);
+        isEast = EAST.includes(t.team);
+      }
+      if (isWest) westRows.push(t);
+      else if (isEast) eastRows.push(t);
+    });
+
+    const renderConf = (rows, tableEl) => {
+      rows.sort((a, b) =>
+        (b.pts || 0) - (a.pts || 0) ||
+        (b.w || 0) - (a.w || 0) ||
+        ((b.gf || 0) - (b.ga || 0)) - ((a.gf || 0) - (a.ga || 0))
+      );
+
+      let html = `<thead><tr>
+        <th>№</th>
+        <th style="text-align:left; padding-left:10px;">Команда</th>
+        <th>О</th>
+        <th>И</th>
+        <th>В</th>
+        <th>ВО</th>
+        <th>ВБ</th>
+        <th>ПБ</th>
+        <th>ПО</th>
+        <th>П</th>
+        <th>Ш</th>
+        <th>Последние матчи</th>
+      </tr></thead><tbody>`;
+
+      rows.forEach((t, i) => {
+        const isPlayoffLine = (i === 7);
+        const form = formMap[t.team] || [];
+        const formHtml = form.map(f => `<div class="f-dot ${f ? 'f-w' : 'f-l'}"></div>`).join("");
+        const goalsStr = `${t.gf || 0}-${t.ga || 0}`;
+        const trClass = isPlayoffLine ? 'playoff-line' : '';
+        
+        html += `<tr class="${trClass}">
+          <td class="rank">${i + 1}</td>
+          <td><div class="st-team">${getLogoHtml(t.team).replace('mc-logo', 'st-logo')} ${t.team}</div></td>
+          <td class="pts">${t.pts || 0}</td>
+          <td>${t.gp || 0}</td>
+          <td>${t.w || 0}</td>
+          <td>${t.otw || 0}</td>
+          <td>${t.sow || 0}</td>
+          <td>${t.sol || 0}</td>
+          <td>${t.otl || 0}</td>
+          <td>${t.l || 0}</td>
+          <td>${goalsStr}</td>
+          <td><div class="form-dots">${formHtml}</div></td>
+        </tr>`;
+      });
+      tableEl.innerHTML = html + "</tbody>";
+    };
+
+    renderConf(westRows, tableWest);
+    renderConf(eastRows, tableEast);
+    
+  } catch (e) {
+    console.error("Ошибка в loadStandings:", e);
+    const errorHtml = `<tbody><tr><td colspan="12" style="color:#f85149;text-align:center;padding:20px;">Ошибка: ${e.message}</td></tr></tbody>`;
+    tableWest.innerHTML = errorHtml;
+    tableEast.innerHTML = errorHtml;
+  }
 }
-/* ====================================================== */
 
 async function loadNews() {
   try {
@@ -267,10 +277,15 @@ async function loadNews() {
     }).join("");
   } catch (e) { 
     console.error("Ошибка новостей:", e);
+    document.getElementById("ticker-content").innerHTML = `<span class="ticker-item" style="color:red;">Ошибка новостей</span>`;
   }
 }
 
-loadMatches(); loadStandings(); loadNews(); setInterval(loadNews, 300000);
+// Запуск
+loadMatches(); 
+loadStandings(); 
+loadNews(); 
+setInterval(loadNews, 300000);
 </script>
 </body>
 </html>
