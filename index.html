@@ -34,7 +34,6 @@
   @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
   .mc-date { font-size: 11px; color: var(--muted); text-align: right; width: 45px; flex-shrink: 0; }
   
-  /* ТАБЛИЦА */
   .table-section { display: none; background: var(--card); border-radius: 10px; padding: 15px; overflow-x: auto; border: 1px solid var(--border); }
   .table-section.active { display: block; }
   .conf-title { font-size: 18px; font-weight: 900; margin-bottom: 10px; color: #fff; }
@@ -52,7 +51,6 @@
   .f-w { background: var(--win); } .f-l { background: var(--lose); }
   tr.playoff-line td { border-bottom: 2px solid #484f58; }
 
-  /* Бегущая строка */
   .ticker-wrap { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #000; border-top: 1px solid #30363d; z-index: 99999; display: flex; overflow: hidden; align-items: center; }
   .ticker-title { background: #f85149; color: #fff; font-weight: 900; padding: 0 15px; height: 100%; display: flex; align-items: center; z-index: 10; white-space: nowrap; }
   .ticker { display: flex; align-items: center; white-space: nowrap; animation: ticker 180s linear infinite; padding-left: 100vw; }
@@ -89,7 +87,14 @@
 const SUPABASE = "https://xkjwomtycemjbmhjxnio.supabase.co";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrandvbXR5Y2VtamJtaGp4bmlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3MTk1NTAsImV4cCI6MjEwNzI5NTU1MH0.TqNPgvxf_NfOjv0kU8fwtf5hDegYisVZPjjvX1iAdSs";
 const SUPABASE_STORAGE = "https://xkjwomtycemjbmhjxnio.supabase.co/storage/v1/object/public/logos/";
-const TEAM_LOGOS = { "Ак Барс": "53.png", "Адмирал": "418.png", "Амур": "54.png", "Автомобилист": "190.png", "Авангард": "34.png", "Барыс": "198.png", "Динамо М": "719.png", "Динамо Мн": "207.png", "Лада": "66.png", "Локомотив": "1.png", "Металлург Мг": "37.png", "Нефтехимик": "71.png", "Салават Юлаев": "38.png", "Северсталь": "56.png", "Сибирь": "29.png", "СКА": "24.png", "Спартак": "7.png", "Торпедо НН": "26.png", "Трактор": "25.png", "ХК Сочи": "451.png", "ЦСКА": "2.png", "Шанхай Дрэгонс": "568.png" };
+const TEAM_LOGOS = { 
+  "Ак Барс": "53.png", "Адмирал": "418.png", "Амур": "54.png", "Автомобилист": "190.png", 
+  "Авангард": "34.png", "Барыс": "198.png", "Динамо М": "719.png", "Динамо Мн": "207.png", 
+  "Лада": "66.png", "Локомотив": "1.png", "Металлург Мг": "37.png", "Нефтехимик": "71.png", 
+  "Салават Юлаев": "38.png", "Северсталь": "56.png", "Сибирь": "29.png", "СКА": "24.png", 
+  "Спартак": "7.png", "Торпедо": "26.png", "Торпедо НН": "26.png", "Трактор": "25.png", 
+  "ХК Сочи": "451.png", "ЦСКА": "2.png", "Шанхай Дрэгонс": "568.png" 
+};
 const WEST = ["Локомотив", "ЦСКА", "Шанхай Дрэгонс", "Торпедо НН", "Спартак", "Северсталь", "Динамо Мн", "СКА", "Динамо М", "ХК Сочи", "Лада"];
 const EAST = ["Металлург Мг", "Нефтехимик", "Ак Барс", "Амур", "Барыс", "Салават Юлаев", "Автомобилист", "Адмирал", "Трактор", "Авангард", "Сибирь"];
 
@@ -105,7 +110,10 @@ async function sb(path) {
 }
 
 function formatDate(d) { if(!d) return ""; const p = d.split("-"); return `${p[2]}.${p[1]}`; }
-function getLogoHtml(team) { return TEAM_LOGOS[team] ? `<img src="${SUPABASE_STORAGE}${TEAM_LOGOS[team]}" class="mc-logo" onerror="this.style.display='none'">` : ""; }
+function getLogoHtml(team) { 
+  const logoFile = TEAM_LOGOS[team] || TEAM_LOGOS[team.replace(" НН", "")];
+  return logoFile ? `<img src="${SUPABASE_STORAGE}${logoFile}" class="mc-logo" onerror="this.style.display='none'">` : ""; 
+}
 
 function switchMainTab(tab) {
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
@@ -281,7 +289,6 @@ async function loadNews() {
   }
 }
 
-// Запуск
 loadMatches(); 
 loadStandings(); 
 loadNews(); 
