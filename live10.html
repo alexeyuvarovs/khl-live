@@ -490,23 +490,70 @@ function switchTab(tab) {
 async function renderLineups() {
   const container = document.getElementById("lineups-container");
   container.innerHTML = '<div class="loading">Загрузка...</div>';
-  const data = await sb(`identity?select=*&or=(team.eq.${encodeURIComponent(homeTeam)},team.eq.${encodeURIComponent(visitorTeam)})`);
-  if (!data || data.length === 0) { container.innerHTML = '<div class="loading">Составы еще не загружены.</div>'; return; }
   
+  // 1. Получаем список игроков, которые реально заявлены на этот матч
+  const statsData = await sb(`players_stats?gameid=eq.${currentGameid}`);
+  
+  if (!statsData || statsData.length === 0) {
+      container.innerHTML = '<div class="loading">Составы еще не загружены.</div>';
+      return;
+  }
+
+  // 2. Получаем справочник (для фото, звеньев и полных имен)
+  const data = await sb(`identity?select=*&or=(team.eq.${encodeURIComponent(homeTeam)},team.eq.${encodeURIComponent(visitorTeam)})`);
+  
+  // 3. Фильтруем справочник, оставляя только тех, кто есть в заявке на матч
+  const activeKeys = new Set(statsData.map(s => `${s.team}_${s.num}`));
+  let filteredData = [];
+  
+  if (data) {
+      filteredData = data.filter(p => activeKeys.has(`${p.team}_${p.num}`));
+  }
+  
+  // Если справочник почему-то пуст, используем данные из players_stats
+  if (filteredData.length === 0) {
+      filteredData = statsData.map(s => ({
+          team: s.team,
+          player: s.player,
+          num: s.num,
+          position: s.position,
+          line: s.line || null
+      }));
+  }
+
   let html = `<div class="lineup-header"><span class="home">${homeTeam}</span><span class="away">${visitorTeam}</span></div><div class="lineup-grid">`;
+  
   [homeTeam, visitorTeam].forEach(team => {
     const ab = team === homeTeam ? "A" : "B"; 
-    const players = data.filter(p => p.team === team);
+    const players = filteredData.filter(p => p.team === team);
     const lines = {};
-    players.forEach(p => { let key = p.position === 'Вр' ? 'Вратари' : (p.line ? `${p.line}-е звено` : 'Резерв'); if (!lines[key]) lines[key] = []; lines[key].push(p); });
+    
+    players.forEach(p => { 
+      let key = p.position === 'Вр' ? 'Вратари' : (p.line ? `${p.line}-е звено` : 'Резерв'); 
+      if (!lines[key]) lines[key] = []; 
+      lines[key].push(p); 
+    });
+
     html += `<div class="lineup-col">`;
-    Object.keys(lines).sort((a, b) => { if (a === 'Вратари') return -1; if (b === 'Вратари') return 1; if (a === 'Резерв') return 1; if (b === 'Резерв') return -1; return parseInt(a) - parseInt(b); }).forEach(key => {
+    
+    Object.keys(lines).sort((a, b) => { 
+      if (a === 'Вратари') return -1; if (b === 'Вратари') return 1; 
+      if (a === 'Резерв') return 1; if (b === 'Резерв') return -1; 
+      return parseInt(a) - parseInt(b); 
+    }).forEach(key => {
+      
       html += `<div class="line-box"><div class="line-title">${key}</div><div class="line-players">`;
-      lines[key].sort((a, b) => { if (a.position === 'Защ' && b.position !== 'Защ') return -1; if (b.position === 'Защ' && a.position !== 'Защ') return 1; return Number(a.num) - Number(b.num); }).forEach(p => {
+      
+      lines[key].sort((a, b) => {
+          if (a.position === 'Защ' && b.position !== 'Защ') return -1;
+          if (b.position === 'Защ' && a.position !== 'Защ') return 1;
+          return Number(a.num) - Number(b.num);
+      }).forEach(p => {
         const numStr = cleanNum(p.num);
         const stats = roster[`${ab}_${numStr}`] || { g: 0, a: 0 };
         const pts = (Number(stats.g) || 0) + (Number(stats.a) || 0);
         let statsHtml = pts > 0 ? `<span class="stats" style="font-size: 12px; color: var(--goal-border); font-weight: 900; margin-right: 10px;">${stats.g}Г ${stats.a}П</span>` : '';
+
         html += `<div class="line-player" onclick="showPlayerModal('${ab}', '${numStr}')" style="cursor:pointer; transition: background 0.2s;" onmouseover="this.style.background='#21262d'" onmouseout="this.style.background='transparent'">
           <span class="num">${p.num || '-'}</span>
           <span class="name player-link">${p.player}</span>
@@ -518,6 +565,7 @@ async function renderLineups() {
     });
     html += `</div>`;
   });
+  
   html += `</div>`;
   container.innerHTML = html;
 }
