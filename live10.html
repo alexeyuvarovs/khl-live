@@ -258,4 +258,366 @@ async function loadGoals() {
     liveGoals.forEach(g => {
       const key = `${g.period}_${g.time_ms}`;
       const ex = parseExtra(g.extra);
-      if (!goalsData[key])
+      if (!goalsData[key]) { goalsData[key] = { time_ms: g.time_ms, period: g.period, team: g.team_ab === 'A' ? homeTeam : visitorTeam, assist_1: ex.assist_1?.name || null, assist_2: ex.assist_2?.name || null, score_a: ex.scA || 0, score_b: ex.scB || 0 }; }
+      else { if (ex.scA !== undefined) goalsData[key].score_a = ex.scA; if (ex.scB !== undefined) goalsData[key].score_b = ex.scB; }
+    });
+  }
+  Object.values(goalsData).forEach(g => { if (g.score_a !== undefined) scoreA = g.score_a; if (g.score_b !== undefined) scoreB = g.score_b; });
+  document.getElementById("score-home").textContent = scoreA;
+  document.getElementById("score-away").textContent = scoreB;
+}
+
+async function loadPenalties() { if (!currentGameid) return; const pens = await sb(`penalties?gameid=eq.${currentGameid}&select=period,time,minutes,reason,team,player`); penaltiesData = []; if (pens) penaltiesData = pens; }
+async function loadCommentary() { if (!currentGameid) return; try { commentaryData = await sb(`commentary?gameid=eq.${currentGameid}&order=id.desc&limit=20`) || []; } catch (e) {} }
+
+async function loadFeed() {
+  if (!currentGameid) return;
+  try {
+    const events = await sb(`game_legend?gameid=eq.${currentGameid}&order=period.desc,time_ms.desc&limit=500`) || [];
+    const commentaries = await sb(`commentary?gameid=eq.${currentGameid}&order=id.desc&limit=50`) || [];
+    commentaryData = commentaries;
+    const feed = document.getElementById("feed");
+    if (events.length === 0 && commentaries.length === 0) { feed.innerHTML = '<div class="loading">Событий пока нет...</div>'; return; }
+    
+    const maxPeriod = events.length > 0 ? Math.max(...events.map(e => e.period)) : 1;
+    updateHeaderStats(events, maxPeriod);
+
+    let unifiedFeed = [];
+    commentaries.forEach(c => { unifiedFeed.push({ feedType: 'commentary', period: Number(c.period) || 0, time_ms: c.time_ms || "00:00", sortTime: (Number(c.period) || 0) * 3600 + parseTimeStr(c.time_ms), data: c }); });
+    events.forEach(e => { unifiedFeed.push({ feedType: 'event', period: Number(e.period) || 0, time_ms: e.time_ms, sortTime: (Number(e.period) || 0) * 3600 + parseTimeStr(e.time_ms), data: e }); });
+    unifiedFeed.sort((a, b) => b.sortTime - a.sortTime);
+
+    const unifiedHtml = unifiedFeed.map(item => {
+      if (item.feedType === 'commentary') {
+        const c = item.data;
+        return `<div class="event" style="border-left:3px solid ${c.priority ? '#f0c040' : '#58a6ff'};background:${c.priority ? 'rgba(240,192,64,0.08)' : 'rgba(88,166,255,0.05)'};">
+          <div class="time">${c.time_ms || '—'}</div>
+          <div class="icon">${c.priority ? '🔥' : '💬'}</div>
+          <div class="event-body"><div class="event-title">${c.priority ? 'ВАЖНО' : 'КОММЕНТАРИЙ'}</div><div class="event-details">${c.text.replace(/</g, "&lt;")}</div><div class="assists">${c.author || 'Оператор'}, ${c.period}-й период</div></div>
+        </div>`;
+      } else {
+        const e = item.data;
+        const isGoal = e.type === "goal", isA = e.team_ab === "A", teamClass = isA ? "team-a-text" : "team-b-text", teamName = isA ? homeTeam : visitorTeam;
+        let playerName = "";
+        if (e.jn && e.jn !== "0") { const pObj = roster[`${e.team_ab}_${cleanNum(e.jn)}`]; if (pObj) playerName = `<b class="player-link" onclick="showPlayerModal('${e.team_ab}', '${cleanNum(e.jn)}')">${pObj.name}</b>`; else playerName = `№${e.jn}`; }
+        let icon = "", title = "", details = "", extraHtml = "";
+        switch (e.type) {
+          case "goal": {
+            icon = "🚨"; title = "ГОЛ!"; details = `<span class="${teamClass}">${teamName}</span> ${playerName}`; 
+            const gKey = `${e.period}_${e.time_ms}`; 
+            if (goalsData[gKey]) { 
+                const g = goalsData[gKey]; 
+                const a1 = g.assist_1 ? `<b>${g.assist_1.split(" ")[0]}</b>` : null; 
+                const a2 = g.assist_2 ? `<b>${g.assist_2.split(" ")[0]}</b>` : null; 
+                if (a1 || a2) extraHtml = `<div class="assists">Ассисты: ${[a1, a2].filter(Boolean).join(', ')}</div>`; 
+                if (g.score_a !== undefined) extraHtml += `<div class="score-after">Счёт: ${g.score_a} : ${g.score_b}</div>`; 
+            } 
+            break;
+          }
+          case "shot": { if (e.result === "miss") return ""; icon = "🎯"; title = "Бросок"; details = `${playerName} (${teamName})`; break; }
+          case "block": { icon = "🛡"; title = "Блок"; details = `${playerName} (${teamName})`; break; }
+          case "goalkeeper": { icon = "🧤"; title = "Смена вратаря"; details = teamName; break; }
+          case "timeout": { icon = "⏸"; title = "Тайм-аут"; details = teamName; break; }
+          case "penalty": {
+            icon = "🟨"; title = "Удаление"; 
+            let penPlayer = playerName; let penExtra = "";
+            const penData = penaltiesData.find(p => String(p.period) === String(e.period) && String(p.time) === String(e.time_ms));
+            if (penData) { if (penData.player) penPlayer = `<b>${penData.player.split(" ")[0]}</b>`; if (penData.minutes) penExtra += `<b>${penData.minutes} мин.</b> `; if (penData.reason) penExtra += `— ${penData.reason}`; } 
+            else { const raw = parseExtra(e.extra); if (raw.mins) penExtra += `<b>${raw.mins} мин.</b> `; penExtra += `<span style="color:#484f58;">— Причина уточняется</span>`; }
+            const oppTeam = isA ? visitorTeam : homeTeam; const oppPP = seasonStats[oppTeam]?.pp_pct ? Number(seasonStats[oppTeam].pp_pct).toFixed(0) : null;
+            if (oppPP) penExtra += `<br><span style="color:#8b949e; font-size:12px;">Реализация бол. ${TEAM_CODES[oppTeam] || oppTeam}: ${oppPP}%</span>`;
+            details = `${penPlayer} (${teamName})`; extraHtml = `<div class="assists" style="color:#f0c040;">${penExtra}</div>`; 
+            break;
+          }
+          case "action": { if (e.result === "hit") { icon = "💥"; title = "Силовой"; details = `${playerName} (${teamName})`; } else return ""; break; }
+          default: return "";
+        }
+        if (!details) return "";
+        return `<div class="event ${isGoal ? 'goal' : ''}"><div class="time">${e.time_ms}</div><div class="icon">${icon}</div><div class="event-body"><div class="event-title">${title}</div><div class="event-details">${details}</div>${extraHtml}</div></div>`;
+      }
+    }).join('');
+    feed.innerHTML = unifiedHtml;
+  } catch (err) { console.error("Ошибка в loadFeed:", err); }
+  
+  let p1_h = 0, p1_v = 0, p2_h = 0, p2_v = 0, p3_h = 0, p3_v = 0;
+  Object.values(goalsData).forEach(g => {
+    if (g.team === homeTeam) { if (g.period === 1) p1_h++; else if (g.period === 2) p2_h++; else if (g.period === 3) p3_h++; }
+    else if (g.team === visitorTeam) { if (g.period === 1) p1_v++; else if (g.period === 2) p2_v++; else if (g.period === 3) p3_v++; }
+  });
+
+  if (Object.keys(goalsData).length > 0) {
+    const pbContainer = document.getElementById("period-breakdown");
+    if (pbContainer) {
+      pbContainer.style.display = "block";
+      document.getElementById("pb-p1").textContent = `${p1_h} : ${p1_v}`;
+      document.getElementById("pb-p2").textContent = `${p2_h} : ${p2_v}`;
+      document.getElementById("pb-p3").textContent = `${p3_h} : ${p3_v}`;
+      // Подсветка лидера периода
+      ["pb-item-1", "pb-item-2", "pb-item-3"].forEach((id, idx) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.remove("win-home", "win-away", "draw");
+        const h = [p1_h, p2_h, p3_h][idx], v = [p1_v, p2_v, p3_v][idx];
+        if (h > v) el.classList.add("win-home");
+        else if (v > h) el.classList.add("win-away");
+        else el.classList.add("draw");
+      });
+    }
+  }
+}
+
+function updateHeaderStats(events, maxPeriod) {
+  let sA = 0, sB = 0; events.forEach(e => { if (e.type === 'shot' && e.result !== 'miss') { if (e.team_ab === 'A') sA++; else sB++; } });
+  document.getElementById("home-sog").textContent = sA; document.getElementById("away-sog").textContent = sB;
+  if (currentMatchData?.winner) { document.getElementById("tv-period").textContent = "Матч завершён"; document.getElementById("live-dot").style.display = "none"; }
+  else { const perNames = { 1: "1ST", 2: "2ND", 3: "3RD", 4: "OT" }; document.getElementById("tv-period").textContent = perNames[maxPeriod] || `${maxPeriod}-й период`; document.getElementById("live-dot").style.display = "inline-block"; }
+}
+
+function renderTimeline() {
+  const container = document.getElementById("timeline-container"), bar = document.getElementById("timeline-bar"), labels = document.getElementById("tl-labels");
+  const goals = Object.values(goalsData).sort((a, b) => a.period !== b.period ? a.period - b.period : parseTimeStr(a.time_ms) - parseTimeStr(b.time_ms));
+  if (goals.length === 0) { if(container) container.style.display = "none"; return; } 
+  if(container) container.style.display = "block";
+  const maxPeriod = Math.max(...goals.map(g => Number(g.period))), hasOT = maxPeriod >= 4, totalMin = hasOT ? 65 : 60, numP = hasOT ? 4 : 3;
+  if(bar) {
+    bar.innerHTML = ''; 
+    for (let i = 1; i < numP; i++) { 
+      const div = document.createElement("div"); 
+      div.style.cssText = "position:absolute;top:0;bottom:0;width:1px;background:#30363d;"; 
+      div.style.left = (i * (100 / numP)) + "%"; 
+      bar.appendChild(div); 
+    }
+  }
+  if(labels) {
+    labels.innerHTML = hasOT ? "<span>0'</span><span>20'</span><span>40'</span><span>60'</span><span>65'</span>" : "<span>0'</span><span>20'</span><span>40'</span><span>60'</span>";
+  }
+  if(bar) {
+    goals.forEach(g => { 
+      const minP = parseTimeStr(g.time_ms) / 60, absM = (Number(g.period) - 1) * 20 + minP; 
+      let pos = (absM / totalMin) * 100; 
+      if (isNaN(pos)) pos = 50; 
+      pos = Math.min(97, Math.max(3, pos)); 
+      const color = g.team === homeTeam ? "#f85149" : "#58a6ff"; 
+      const marker = document.createElement("div"); 
+      marker.style.cssText = `position:absolute;top:50%;transform:translate(-50%,-50%);height:18px;min-width:24px;padding:0 4px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:white;cursor:pointer;left:${pos}%;background:${color};border:2px solid #0d1117;z-index:10;`; 
+      marker.textContent = `${g.score_a}:${g.score_b}`; 
+      bar.appendChild(marker); 
+    });
+  }
+}
+
+async function loadShots() { if (!currentGameid) return; allShots = await sb(`shots?gameid=eq.${currentGameid}`) || []; buildPlayerFilter(); renderRink(); }
+
+function renderRink() { 
+  const svg = document.getElementById("rink"); 
+  if(!svg) return;
+  svg.innerHTML = `
+    <rect fill="#f0f8ff" x="0" y="0" width="1000" height="500" rx="60" ry="60" stroke="#ccc" stroke-width="4"/>
+    <line x1="500" y1="0" x2="500" y2="500" stroke="#cc0000" stroke-width="6" stroke-dasharray="15,10"/>
+    <line x1="350" y1="0" x2="350" y2="500" stroke="#0044cc" stroke-width="6"/>
+    <line x1="650" y1="0" x2="650" y2="500" stroke="#0044cc" stroke-width="6"/>
+    <circle cx="500" cy="250" r="60" stroke="#0044cc" stroke-width="4" fill="none"/>
+    <circle cx="500" cy="250" r="8" fill="#0044cc"/>
+    <circle cx="200" cy="130" r="60" stroke="#cc0000" stroke-width="4" fill="none"/>
+    <circle cx="200" cy="370" r="60" stroke="#cc0000" stroke-width="4" fill="none"/>
+    <circle cx="200" cy="130" r="6" fill="#cc0000"/>
+    <circle cx="200" cy="370" r="6" fill="#cc0000"/>
+    <circle cx="800" cy="130" r="60" stroke="#cc0000" stroke-width="4" fill="none"/>
+    <circle cx="800" cy="370" r="60" stroke="#cc0000" stroke-width="4" fill="none"/>
+    <circle cx="800" cy="130" r="6" fill="#cc0000"/>
+    <circle cx="800" cy="370" r="6" fill="#cc0000"/>
+    <path d="M 0 200 L 20 200 L 20 300 L 0 300 Z" fill="#cc0000" />
+    <path d="M 1000 200 L 980 200 L 980 300 L 1000 300 Z" fill="#cc0000" />
+  `; 
+  if (!allShots || allShots.length === 0) return; 
+  const tooltip = document.getElementById("tooltip"), rinkWrapper = document.querySelector(".rink-wrapper");
+  allShots.forEach(s => { 
+    if (currentShotFilter !== 'all' && s.team_ab !== currentShotFilter) return; 
+    if (currentPlayerFilter !== 'all' && String(s.jn) !== String(currentPlayerFilter)) return; 
+    let svgX = parseFloat(String(s.x).replace(',', '.'));
+    let svgY = parseFloat(String(s.y).replace(',', '.'));
+    if (isNaN(svgX) || isNaN(svgY)) return;
+    svgX = Math.max(20, Math.min(980, svgX));
+    svgY = Math.max(20, Math.min(480, svgY));
+    const isGoal = s.shot_type === 1, color = s.team_ab === "A" ? "#f85149" : "#58a6ff"; 
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle"); 
+    circle.setAttribute("cx", svgX); circle.setAttribute("cy", svgY); circle.setAttribute("r", isGoal ? 20 : 15); circle.setAttribute("fill", color); circle.setAttribute("fill-opacity", isGoal ? 1 : 0.85); circle.style.cursor = "pointer";
+    circle.onclick = () => { if (s.jn && s.jn !== "0") showPlayerModal(s.team_ab, cleanNum(s.jn)); };
+    circle.onmouseover = () => { if(tooltip) { tooltip.style.opacity = 1; const pName = roster[`${s.team_ab}_${cleanNum(s.jn)}`]?.name || `№${s.jn}`; const teamName = s.team_ab === "A" ? homeTeam : visitorTeam; tooltip.textContent = `${pName} (${teamName}) — ${s.time_ms} ${isGoal ? '🚨 ГОЛ' : 'Бросок'}`; } };
+    circle.onmousemove = (e) => { if(tooltip && rinkWrapper) { const rect = rinkWrapper.getBoundingClientRect(); tooltip.style.left = (e.clientX - rect.left + 15) + "px"; tooltip.style.top = (e.clientY - rect.top + 15) + "px"; } };
+    circle.onmouseout = () => { if(tooltip) tooltip.style.opacity = 0; };
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text"); text.setAttribute("x", svgX); text.setAttribute("y", svgY); text.setAttribute("text-anchor", "middle"); text.setAttribute("dominant-baseline", "central"); text.setAttribute("fill", "white"); text.setAttribute("font-size", isGoal ? 13 : 11); text.setAttribute("font-weight", "bold"); text.style.pointerEvents = "none"; text.textContent = cleanNum(s.jn); 
+    svg.appendChild(circle); svg.appendChild(text); 
+  }); 
+}
+
+function buildPlayerFilter() { const select = document.getElementById("player-filter"); if(!select) return; while (select.options.length > 1) select.remove(1); if (!allShots) return; const shooters = {}; allShots.forEach(s => { if (!s.jn || s.jn === "0") return; const key = `${s.team_ab}_${cleanNum(s.jn)}`; if (!shooters[key]) shooters[key] = { ab: s.team_ab, jn: cleanNum(s.jn), name: roster[key]?.name || `№${s.jn}`, goals: 0 }; if (s.shot_type === 1) shooters[key].goals++; }); Object.values(shooters).sort((a, b) => a.ab.localeCompare(b.ab) || Number(a.jn) - Number(b.jn)).forEach(sh => { const opt = document.createElement("option"); opt.value = sh.jn + "_" + sh.ab; opt.textContent = `${sh.ab === "A" ? "🔴" : "🔵"} №${sh.jn} ${sh.name}${sh.goals > 0 ? ` ⚽${sh.goals}` : ""}`; select.appendChild(opt); }); }
+function filterPlayer(val) { if (val === "all") { currentPlayerFilter = 'all'; currentShotFilter = 'all'; document.querySelectorAll(".map-controls button").forEach(b => b.classList.remove("active")); const btn = document.getElementById("btn-all"); if(btn) btn.classList.add("active"); } else { const parts = val.split("_"); currentPlayerFilter = parts[0]; currentShotFilter = parts[1]; document.querySelectorAll(".map-controls button").forEach(b => b.classList.remove("active")); if (parts[1] === 'A') document.getElementById("btn-home").classList.add("active"); if (parts[1] === 'B') document.getElementById("btn-visitor").classList.add("active"); } renderRink(); }
+function filterShots(team) { currentShotFilter = team; currentPlayerFilter = 'all'; const sel = document.getElementById("player-filter"); if(sel) sel.value = "all"; document.querySelectorAll(".map-controls button").forEach(b => b.classList.remove("active")); if (team === 'all') document.getElementById("btn-all").classList.add("active"); if (team === 'A') document.getElementById("btn-home").classList.add("active"); if (team === 'B') document.getElementById("btn-visitor").classList.add("active"); renderRink(); }
+
+function switchTab(tab) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".feed-container, .map-container, .stats-container, .lineups-container").forEach(c => c.classList.remove("active"));
+  if (tab === 'feed') { document.querySelectorAll(".tab")[0].classList.add("active"); document.getElementById("feed-container").classList.add("active"); }
+  else if (tab === 'lineups') { document.querySelectorAll(".tab")[1].classList.add("active"); document.getElementById("lineups-container").classList.add("active"); renderLineups(); }
+  else if (tab === 'map') { document.querySelectorAll(".tab")[2].classList.add("active"); document.getElementById("map-container").classList.add("active"); renderRink(); }
+  else if (tab === 'stats') { document.querySelectorAll(".tab")[3].classList.add("active"); document.getElementById("stats-container").classList.add("active"); if (!teamStatsData && currentGameid) loadTeamStats().then(renderTeamStats); else renderTeamStats(); }
+}
+
+async function renderLineups() {
+  const container = document.getElementById("lineups-container");
+  container.innerHTML = '<div class="loading">Загрузка...</div>';
+  const statsData = await sb(`players_stats?gameid=eq.${currentGameid}`);
+  if (!statsData || statsData.length === 0) { container.innerHTML = '<div class="loading">Составы еще не загружены.</div>'; return; }
+  const identity = await sb(`identity?select=*&or=(team.eq.${encodeURIComponent(homeTeam)},team.eq.${encodeURIComponent(visitorTeam)})`) || [];
+  let html = `<div class="lineup-header"><span class="home">${homeTeam}</span><span class="away">${visitorTeam}</span></div><div class="lineup-grid">`;
+  [homeTeam, visitorTeam].forEach(team => {
+    const ab = team === homeTeam ? "A" : "B"; 
+    const activeStats = statsData.filter(s => s.team === team);
+    const teamPlayers = [];
+    const processed = new Set(); 
+    activeStats.forEach(s => {
+        const numStr = String(s.num || "").trim();
+        if (!numStr) return;
+        const key = `${s.player}_${numStr}`;
+        if (processed.has(key)) return; 
+        processed.add(key);
+        const idInfo = identity.find(i => i.team === team && String(i.num).trim() === numStr && i.player === s.player);
+        teamPlayers.push({ name: s.player, num: numStr, pos: idInfo ? idInfo.position : s.position, line: idInfo && idInfo.line ? Number(idInfo.line) : null, photo: idInfo ? idInfo.photo : null });
+    });
+    const lines = { 'Вратари': [], '1-е звено': [], '2-е звено': [], '3-е звено': [], '4-е звено': [], 'Резерв': [] };
+    teamPlayers.forEach(p => {
+        if (p.pos === 'Вр') lines['Вратари'].push(p);
+        else if (p.line && p.line >= 1 && p.line <= 4) lines[`${p.line}-е звено`].push(p);
+        else lines['Резерв'].push(p);
+    });
+    Object.keys(lines).forEach(key => {
+        if (key === 'Вратари' || key === 'Резерв') return;
+        let defs = lines[key].filter(p => p.pos === 'Защ');
+        let fwds = lines[key].filter(p => p.pos === 'Нап');
+        lines[key] = [...defs.slice(0, 2), ...fwds.slice(0, 3)];
+    });
+    html += `<div class="lineup-col">`;
+    Object.keys(lines).forEach(key => {
+        if (lines[key].length === 0) return;
+        html += `<div class="line-box"><div class="line-title">${key}</div><div class="line-players">`;
+        lines[key].sort((a, b) => { if (a.pos === 'Защ' && b.pos !== 'Защ') return -1; if (b.pos === 'Защ' && a.pos !== 'Защ') return 1; return Number(a.num) - Number(b.num); }).forEach(p => {
+            const stats = roster[`${ab}_${p.num}`] || { g: 0, a: 0 };
+            const pts = (Number(stats.g) || 0) + (Number(stats.a) || 0);
+            let statsHtml = pts > 0 ? `<span class="stats" style="font-size: 12px; color: var(--goal-border); font-weight: 900; margin-right: 10px;">${stats.g}Г ${stats.a}П</span>` : '';
+            html += `<div class="line-player" onclick="showPlayerModal('${ab}', '${p.num}')" style="cursor:pointer; transition: background 0.2s;" onmouseover="this.style.background='#21262d'" onmouseout="this.style.background='transparent'">
+              <span class="num">${p.num}</span>
+              <span class="name player-link">${p.name}</span>
+              ${statsHtml}
+              <span class="pos">${p.pos}</span>
+            </div>`;
+        });
+        html += `</div></div>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+function showPlayerModal(ab, jn) { const p = roster[`${ab}_${jn}`]; if (!p) return; const img = document.getElementById("pm-photo"); if (p.photo) { img.src = p.photo; img.style.display = "block"; } else { img.style.display = "none"; } document.getElementById("pm-name").textContent = p.fullName; document.getElementById("pm-team").textContent = p.team; document.getElementById("pm-pts").textContent = (Number(p.g) || 0) + (Number(p.a) || 0); document.getElementById("pm-ga").textContent = `${p.g || 0} + ${p.a || 0}`; document.getElementById("pm-sog").textContent = p.sog || 0; document.getElementById("pm-hits").textContent = p.hits || 0; const pmVal = Number(p.pm) || 0; document.getElementById("pm-pm").textContent = pmVal > 0 ? `+${pmVal}` : pmVal; document.getElementById("pm-toi").textContent = p.toi || "00:00"; document.getElementById("player-modal").style.display = "flex"; }
+function closePlayerModal(e) { if (e && e.target.id !== 'player-modal' && !e.target.classList.contains('close-btn')) return; document.getElementById("player-modal").style.display = "none"; }
+document.addEventListener('keydown', function(event) { if (event.key === 'Escape' || event.key === 'Esc') { document.getElementById("player-modal").style.display = "none"; } });
+
+async function loadTeamStats() { if (!currentGameid) return; try { teamStatsData = await sb(`team_stats?gameid=eq.${currentGameid}`); } catch (e) {} }
+function setStatsPeriod(per) { currentStatsPeriod = per; document.querySelectorAll(".stats-periods button").forEach((b, i) => { if (i === per) b.classList.add("active"); else b.classList.remove("active"); }); renderTeamStats(); }
+function renderStatRow(title, h, a, unit = "") { const total = Number(h) + Number(a); const hp = total > 0 ? (Number(h) / total * 100) : 50; const ap = total > 0 ? (Number(a) / total * 100) : 50; return `<div class="stat-row"><div class="stat-title">${title}</div><div class="stat-values"><span class="home">${h}${unit}</span><span class="away">${a}${unit}</span></div><div class="stat-bar"><div class="stat-bar-home" style="width:${hp}%"></div><div class="stat-bar-away" style="width:${ap}%"></div></div></div>`; }
+function renderPercentRow(title, h, a) { h = h || 0; a = a || 0; return `<div class="stat-row"><div class="stat-title">${title}</div><div class="stat-percent"><span class="home">${Number(h).toFixed(1)}%</span><span class="away">${Number(a).toFixed(1)}%</span></div></div>`; }
+function renderTeamStats() { 
+  const container = document.getElementById("stats-content"); 
+  if (!container) return;
+  if (!teamStatsData) teamStatsData = []; 
+  let home = teamStatsData.find(s => s.team === homeTeam && s.period === currentStatsPeriod); 
+  let away = teamStatsData.find(s => s.team === visitorTeam && s.period === currentStatsPeriod); 
+  if (!home || !away) { home = teamStatsData.find(s => s.team === homeTeam && s.period === 0); away = teamStatsData.find(s => s.team === visitorTeam && s.period === 0); }
+  if (!home || !away) { home = { g: currentMatchData?.home_goals || 0, sog: 0, hits: 0, bls: 0, tka: 0, p_intc: 0, gva: 0, pim: 0, ppgf: 0, pp_pct: 0, shgf: 0, pk_pct: 0 }; away = { g: currentMatchData?.visitor_goals || 0, sog: 0, hits: 0, bls: 0, tka: 0, p_intc: 0, gva: 0, pim: 0, ppgf: 0, pp_pct: 0, shgf: 0, pk_pct: 0 }; } 
+  container.innerHTML = `<div class="stats-header"><span class="h">${homeTeam}</span><span class="a">${visitorTeam}</span></div>${renderStatRow("Голы", home.g || 0, away.g || 0)}${renderStatRow("Броски", home.sog || 0, away.sog || 0)}${renderStatRow("Силовые", home.hits || 0, away.hits || 0)}${renderStatRow("Блоки", home.bls || 0, away.bls || 0)}${renderStatRow("Отборы", home.tka || 0, away.tka || 0)}${renderStatRow("Перехваты", home.p_intc || 0, away.p_intc || 0)}${renderStatRow("Потери", home.gva || 0, away.gva || 0)}${renderStatRow("Штраф", home.pim || 0, away.pim || 0, " мин")}<div class="stat-divider">Спецбригады</div>${renderStatRow("Голы в бол.", home.ppgf || 0, away.ppgf || 0)}${renderPercentRow("Реализация бол.", home.pp_pct, away.pp_pct)}${renderStatRow("Голы в мен.", home.shgf || 0, away.shgf || 0)}${renderPercentRow("Нейтрализация мен.", home.pk_pct, away.pk_pct)}`; 
+}
+
+async function loadAllForCurrentGame() { await loadSeasonStats(); await loadRoster(); await loadGoals(); await loadPenalties(); await loadCommentary(); await loadFeed(); await loadShots(); await loadTeamStats(); }
+
+async function findLatestMatch() {
+  const urlParams = new URLSearchParams(window.location.search);
+  let activeGid = urlParams.get("gameid"), m = null;
+  if (activeGid) { const res = await sb(`matches?gameid=eq.${activeGid}&select=gameid,date,home,visitor,home_goals,visitor_goals,winner`); if (res && res.length > 0) m = res[0]; }
+  if (!m) { const res = await sb(`matches?select=gameid,date,home,visitor,home_goals,visitor_goals,winner&order=date.desc,gameid.desc&limit=1`); if (res && res.length > 0) m = res[0]; }
+  if (!m) return null;
+  currentGameid = m.gameid; homeTeam = m.home; visitorTeam = m.visitor; currentMatchData = m; updateHeaderTeams(m); return m;
+}
+
+async function switchMatch(gid) {
+  if (!gid) return;
+  const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?gameid=" + gid;
+  window.history.pushState({ path: newUrl }, '', newUrl);
+  currentGameid = gid; roster = {}; goalsData = {}; penaltiesData = {}; commentaryData = []; allShots = []; teamStatsData = null; lastMaxEventId = 0; isUpdating = false; lastShotsUpdate = 0;
+  document.getElementById("feed").innerHTML = '<div class="loading">Загрузка...</div>';
+  const m = await sb(`matches?gameid=eq.${gid}&select=gameid,home,visitor,home_goals,visitor_goals,winner`);
+  if (m && m[0]) { homeTeam = m[0].home; visitorTeam = m[0].visitor; currentMatchData = m[0]; updateHeaderTeams(m[0]); }
+  await loadAllForCurrentGame();
+}
+
+async function tick() {
+  if (isUpdating) return; isUpdating = true;
+  const safety = setTimeout(() => { isUpdating = false; }, 10000);
+  try {
+    if (!currentGameid) {
+      const m = await findLatestMatch();
+      if (m) { currentMatchData = m; await loadAllForCurrentGame(); }
+      else { document.getElementById("feed").innerHTML = '<div class="loading">Нет матчей.</div>'; }
+    } else {
+      const matches = await sb(`matches?gameid=eq.${currentGameid}&select=winner,home_goals,visitor_goals`);
+      if (matches && matches[0]) currentMatchData = { ...currentMatchData, ...matches[0] };
+      await loadGoals(); await loadFeed(); await loadCommentary();
+      if (Date.now() - lastShotsUpdate > 30000) {
+          await loadShots(); await loadRoster(); await loadTeamStats(); lastShotsUpdate = Date.now();
+          if (document.getElementById("map-container").classList.contains("active")) renderRink();
+          if (document.getElementById("stats-container").classList.contains("active")) renderTeamStats();
+      }
+    }
+    lastUpdateTime = Date.now(); document.getElementById("update-timer").textContent = "Обновлено только что";
+  } catch (e) { console.error("Ошибка в tick:", e); } finally { clearTimeout(safety); isUpdating = false; }
+}
+
+async function loadNews() {
+  try {
+    const TEAM_FULL = { "АВТ": "Автомобилист", "АКБ": "Ак Барс", "АДМ": "Адмирал", "АМР": "Амур", "АВГ": "Авангард", "БАР": "Барыс", "ДИН": "Динамо М", "ДМН": "Динамо Мн", "ЛАД": "Лада", "ЛОК": "Локомотив", "ММГ": "Металлург Мг", "НХК": "Нефтехимик", "САЛ": "Салават Юлаев", "СЕВ": "Северсталь", "СИБ": "Сибирь", "СКА": "СКА", "СПА": "Спартак", "ТОР": "Торпедо НН", "ТРК": "Трактор", "СОЧ": "ХК Сочи", "ЦСК": "ЦСКА", "ДРК": "Шанхай Дрэгонс", "ШДР": "Шанхай Дрэгонс" };
+    const hFull = TEAM_FULL[homeTeam] || homeTeam;
+    const vFull = TEAM_FULL[visitorTeam] || visitorTeam;
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const teamQuery = `news?select=text,type,link,team&is_active=eq.true&or=(team.eq.${encodeURIComponent(hFull)},team.eq.${encodeURIComponent(vFull)})&pub_date=gte.${sevenDaysAgo}&order=pub_date.desc&limit=20`;
+    let teamNews = await sb(teamQuery) || [];
+    let generalNews = [];
+    if (teamNews.length < 3) { const generalQuery = `news?select=text,type,link,team&is_active=eq.true&team=is.null&pub_date=gte.${twoDaysAgo}&order=pub_date.desc&limit=10`; generalNews = await sb(generalQuery) || []; }
+    const allNews = [...teamNews, ...generalNews];
+    const content = document.getElementById("ticker-content"); if (!content) return;
+    if (allNews.length === 0) { content.innerHTML = `<span class="ticker-item">Свежих новостей пока нет</span>`; return; }
+    let html = allNews.map(n => {
+      let prefix = ""; let color = "#e6edf3"; 
+      if (n.type === 'injury') { prefix = `🏥 [${n.team || 'Лазарет'}] `; color = "#f85149"; }
+      else if (n.type === 'interview') { prefix = `🎙️ [Интервью] `; color = "#58a6ff"; }
+      else if (n.team) { prefix = `🏒 [${n.team}] `; color = "#3fb950"; }
+      else { prefix = `🏒 [КХЛ] `; } 
+      return `<a class="ticker-item" href="${n.link || '#'}" target="_blank" style="color:${color}">${prefix}${n.text.replace(/</g, "&lt;")}</a>`;
+    }).join("");
+    const topPlayers = Object.values(roster).filter(p => p.team === hFull || p.team === vFull).sort((a, b) => ((b.g||0) + (b.a||0)) - ((a.g||0) + (a.a||0))).slice(0, 3);
+    if (topPlayers.length > 0) { topPlayers.forEach(p => { if ((p.g || 0) + (p.a || 0) > 0) { html += `<span class="ticker-item" style="color:#f0c040;">⭐ Лидеры: ${p.fullName} (${p.team}) — ${p.g}Г ${p.a}П</span>`; } }); }
+    content.innerHTML = html;
+  } catch (e) { console.error("Ошибка новостей:", e); }
+}
+
+async function initApp() { 
+  await tick(); 
+  loadNews();   
+  setInterval(tick, 15000); 
+  setInterval(loadNews, 300000); 
+}
+initApp();
+</script>
+</body>
+</html>
