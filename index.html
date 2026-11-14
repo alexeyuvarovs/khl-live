@@ -46,9 +46,12 @@
   .standings td.pts { color: #fff; font-weight: 900; font-size: 16px; }
   .st-team { text-align: left; display: flex; align-items: center; gap: 10px; min-width: 160px; padding-left: 10px; font-weight: 700; }
   .st-logo { width: 22px; height: 22px; object-fit: contain; }
-  .form-dots { display: flex; gap: 4px; justify-content: center; }
-  .f-dot { width: 10px; height: 10px; border-radius: 50%; }
+  
+  .form-badges { display: flex; gap: 4px; justify-content: center; }
+  .f-badge { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 4px; font-size: 11px; font-weight: 900; color: #fff; }
   .f-w { background: var(--win); } .f-l { background: var(--lose); }
+  .f-empty { color: var(--muted); font-size: 14px; font-weight: 700; }
+  
   tr.playoff-line td { border-bottom: 2px solid #484f58; }
 
   .ticker-wrap { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #000; border-top: 1px solid #30363d; z-index: 99999; display: flex; overflow: hidden; align-items: center; }
@@ -58,6 +61,9 @@
   .ticker-item { color: #e6edf3; font-size: 15px; font-weight: 700; text-decoration: none; padding-right: 40px; }
   .ticker-item:hover { color: #58a6ff; }
   @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+  
+  .loading { text-align: center; color: var(--muted); padding: 40px; font-size: 15px; font-weight: 700; }
+  .error-msg { text-align: center; color: #f85149; padding: 20px; font-weight: 700; font-size: 14px; }
 </style>
 </head>
 <body>
@@ -87,14 +93,7 @@
 const SUPABASE = "https://xkjwomtycemjbmhjxnio.supabase.co";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrandvbXR5Y2VtamJtaGp4bmlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3MTk1NTAsImV4cCI6MjEwNzI5NTU1MH0.TqNPgvxf_NfOjv0kU8fwtf5hDegYisVZPjjvX1iAdSs";
 const SUPABASE_STORAGE = "https://xkjwomtycemjbmhjxnio.supabase.co/storage/v1/object/public/logos/";
-const TEAM_LOGOS = { 
-  "Ак Барс": "53.png", "Адмирал": "418.png", "Амур": "54.png", "Автомобилист": "190.png", 
-  "Авангард": "34.png", "Барыс": "198.png", "Динамо М": "719.png", "Динамо Мн": "207.png", 
-  "Лада": "66.png", "Локомотив": "1.png", "Металлург Мг": "37.png", "Нефтехимик": "71.png", 
-  "Салават Юлаев": "38.png", "Северсталь": "56.png", "Сибирь": "29.png", "СКА": "24.png", 
-  "Спартак": "7.png", "Торпедо": "26.png", "Торпедо НН": "26.png", "Трактор": "25.png", 
-  "ХК Сочи": "451.png", "ЦСКА": "2.png", "Драконы": "568.png" 
-};
+const TEAM_LOGOS = { "Ак Барс": "53.png", "Адмирал": "418.png", "Амур": "54.png", "Автомобилист": "190.png", "Авангард": "34.png", "Барыс": "198.png", "Динамо М": "719.png", "Динамо Мн": "207.png", "Лада": "66.png", "Локомотив": "1.png", "Металлург Мг": "37.png", "Нефтехимик": "71.png", "Салават Юлаев": "38.png", "Северсталь": "56.png", "Сибирь": "29.png", "СКА": "24.png", "Спартак": "7.png", "Торпедо НН": "26.png", "Трактор": "25.png", "ХК Сочи": "451.png", "ЦСКА": "2.png", "Шанхай Дрэгонс": "568.png", "Драконы": "568.png" };
 const WEST = ["Локомотив", "ЦСКА", "Шанхай Дрэгонс", "Торпедо НН", "Спартак", "Северсталь", "Динамо Мн", "СКА", "Динамо М", "ХК Сочи", "Лада"];
 const EAST = ["Металлург Мг", "Нефтехимик", "Ак Барс", "Амур", "Барыс", "Салават Юлаев", "Автомобилист", "Адмирал", "Трактор", "Авангард", "Сибирь"];
 
@@ -104,16 +103,13 @@ async function sb(path) {
     if (!r.ok) throw new Error("HTTP " + r.status);
     return await r.json(); 
   } catch(e) { 
-    console.error("Ошибка Supabase [" + path + "]:", e);
+    console.error("Ошибка Supabase:", e); 
     return null; 
   } 
 }
 
 function formatDate(d) { if(!d) return ""; const p = d.split("-"); return `${p[2]}.${p[1]}`; }
-function getLogoHtml(team) { 
-  const logoFile = TEAM_LOGOS[team] || TEAM_LOGOS[team.replace(" НН", "")];
-  return logoFile ? `<img src="${SUPABASE_STORAGE}${logoFile}" class="mc-logo" onerror="this.style.display='none'">` : ""; 
-}
+function getLogoHtml(team) { const logo = TEAM_LOGOS[team] || TEAM_LOGOS[team.replace(" НН", "")]; return logo ? `<img src="${SUPABASE_STORAGE}${logo}" class="mc-logo" onerror="this.style.display='none'">` : ""; }
 
 function switchMainTab(tab) {
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
@@ -132,23 +128,13 @@ function switchMainTab(tab) {
 async function loadMatches() {
   const TEAM_FULL = { "АВТ": "Автомобилист", "АКБ": "Ак Барс", "АДМ": "Адмирал", "АМР": "Амур", "АВГ": "Авангард", "БАР": "Барыс", "ДИН": "Динамо М", "ДМН": "Динамо Мн", "ЛАД": "Лада", "ЛОК": "Локомотив", "ММГ": "Металлург Мг", "НХК": "Нефтехимик", "САЛ": "Салават Юлаев", "СЕВ": "Северсталь", "СИБ": "Сибирь", "СКА": "СКА", "СПА": "Спартак", "ТОР": "Торпедо НН", "ТРК": "Трактор", "СОЧ": "ХК Сочи", "ЦСК": "ЦСКА", "ДРК": "Шанхай Дрэгонс", "ШДР": "Шанхай Дрэгонс" };
   const list = document.getElementById("matches-list"), mainBtn = document.getElementById("main-btn");
-  
   try {
     const matches = await sb(`matches?select=gameid,date,home,visitor,home_goals,visitor_goals,winner&order=date.desc,gameid.desc&limit=15`);
-    if (!matches || matches.length === 0) { 
-      list.innerHTML = '<div class="loading">Нет матчей в базе.</div>'; 
-      mainBtn.style.display = "none"; 
-      return; 
-    }
-    
+    if (!matches || matches.length === 0) { list.innerHTML = '<div class="loading">Нет матчей в базе.</div>'; mainBtn.style.display = "none"; return; }
     const today = new Date(), todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
     let activeMatch = matches.find(m => m.date === todayStr && m.winner === null) || matches[0];
     let isLive = (activeMatch.date === todayStr && activeMatch.winner === null);
-    
-    mainBtn.style.display = "block"; 
-    mainBtn.href = `live10.html?gameid=${activeMatch.gameid}`; 
-    mainBtn.className = isLive ? "main-btn live" : "main-btn";
-    
+    mainBtn.style.display = "block"; mainBtn.href = `live10.html?gameid=${activeMatch.gameid}`; mainBtn.className = isLive ? "main-btn live" : "main-btn";
     const aHome = TEAM_FULL[activeMatch.home] || activeMatch.home, aVis = TEAM_FULL[activeMatch.visitor] || activeMatch.visitor;
     mainBtn.innerHTML = isLive ? `🔴 Смотреть LIVE: ${aHome} — ${aVis}` : `▶ Смотреть последний матч: ${aHome} — ${aVis}`;
 
@@ -157,30 +143,21 @@ async function loadMatches() {
       const homeName = TEAM_FULL[m.home] || m.home, visName = TEAM_FULL[m.visitor] || m.visitor;
       return `<a href="live10.html?gameid=${m.gameid}" class="match-card ${isMlive ? 'is-live' : ''}"><div class="mc-team">${getLogoHtml(homeName)}<span class="mc-name">${homeName}</span></div><div class="mc-center"><div class="mc-score">${score}</div><div class="mc-status ${isMlive ? 'live-text' : ''}">${isMlive ? 'LIVE' : (m.winner ? 'Завершён' : 'Скоро')}</div></div><div class="mc-team away"><span class="mc-name">${visName}</span>${getLogoHtml(visName)}</div><div class="mc-date">${formatDate(m.date)}</div></a>`;
     }).join("");
-  } catch (e) { 
-    console.error(e);
-    list.innerHTML = `<div class="loading" style="color:#f85149;">Ошибка матчей: ${e.message}</div>`; 
-  }
+  } catch (e) { list.innerHTML = `<div class="error-msg">Ошибка: ${e.message}</div>`; }
 }
 
 async function loadStandings() {
   const tableWest = document.getElementById("table-west");
   const tableEast = document.getElementById("table-east");
-  
   try {
     const data = await sb(`standings?select=*`);
-    
     if (!data || data.length === 0) {
-      const msg = `<tbody><tr><td colspan="12" style="text-align:center;color:#8b949e;padding:20px;">Нет данных. Запустите updateStandings() в Apps Script.</td></tr></tbody>`;
-      tableWest.innerHTML = msg;
-      tableEast.innerHTML = msg;
-      return;
+      const msg = `<tbody><tr><td colspan="12" style="text-align:center;color:#8b949e;padding:20px;">Нет данных.</td></tr></tbody>`;
+      tableWest.innerHTML = msg; tableEast.innerHTML = msg; return;
     }
-
     const matches = await sb(`matches?select=home,visitor,winner&order=date.desc`) || [];
     const formMap = {};
     [...WEST, ...EAST].forEach(t => formMap[t] = []);
-    
     matches.reverse().forEach(m => {
       if (m.winner === null) return;
       const h = m.home, v = m.visitor;
@@ -193,76 +170,29 @@ async function loadStandings() {
         if (formMap[h].length < 5) formMap[h].push(0);
       }
     });
-
     const westRows = [], eastRows = [];
     data.forEach(t => {
       const conf = (t.conference || "").toLowerCase();
       let isWest = conf.includes("запад") || conf.includes("west");
       let isEast = conf.includes("восток") || conf.includes("east");
-      if (!isWest && !isEast) {
-        isWest = WEST.includes(t.team);
-        isEast = EAST.includes(t.team);
-      }
-      if (isWest) westRows.push(t);
-      else if (isEast) eastRows.push(t);
+      if (!isWest && !isEast) { isWest = WEST.includes(t.team); isEast = EAST.includes(t.team); }
+      if (isWest) westRows.push(t); else if (isEast) eastRows.push(t);
     });
-
     const renderConf = (rows, tableEl) => {
-      rows.sort((a, b) =>
-        (b.pts || 0) - (a.pts || 0) ||
-        (b.w || 0) - (a.w || 0) ||
-        ((b.gf || 0) - (b.ga || 0)) - ((a.gf || 0) - (a.ga || 0))
-      );
-
-      let html = `<thead><tr>
-        <th>№</th>
-        <th style="text-align:left; padding-left:10px;">Команда</th>
-        <th>О</th>
-        <th>И</th>
-        <th>В</th>
-        <th>ВО</th>
-        <th>ВБ</th>
-        <th>ПБ</th>
-        <th>ПО</th>
-        <th>П</th>
-        <th>Ш</th>
-        <th>Последние матчи</th>
-      </tr></thead><tbody>`;
-
+      rows.sort((a, b) => (b.pts || 0) - (a.pts || 0) || (b.w || 0) - (a.w || 0) || ((b.gf || 0) - (b.ga || 0)) - ((a.gf || 0) - (a.ga || 0)));
+      let html = `<thead><tr><th>№</th><th style="text-align:left; padding-left:10px;">Команда</th><th>О</th><th>И</th><th>В</th><th>ВО</th><th>ВБ</th><th>ПБ</th><th>ПО</th><th>П</th><th>Ш</th><th>Форма</th></tr></thead><tbody>`;
       rows.forEach((t, i) => {
         const isPlayoffLine = (i === 7);
         const form = formMap[t.team] || [];
-        const formHtml = form.map(f => `<div class="f-dot ${f ? 'f-w' : 'f-l'}"></div>`).join("");
+        const formHtml = form.length > 0 ? `<div class="form-badges">${form.map(f => `<div class="f-badge ${f ? 'f-w' : 'f-l'}">${f ? 'W' : 'L'}</div>`).join("")}</div>` : `<span class="f-empty">-</span>`;
         const goalsStr = `${t.gf || 0}-${t.ga || 0}`;
-        const trClass = isPlayoffLine ? 'playoff-line' : '';
-        
-        html += `<tr class="${trClass}">
-          <td class="rank">${i + 1}</td>
-          <td><div class="st-team">${getLogoHtml(t.team).replace('mc-logo', 'st-logo')} ${t.team}</div></td>
-          <td class="pts">${t.pts || 0}</td>
-          <td>${t.gp || 0}</td>
-          <td>${t.w || 0}</td>
-          <td>${t.otw || 0}</td>
-          <td>${t.sow || 0}</td>
-          <td>${t.sol || 0}</td>
-          <td>${t.otl || 0}</td>
-          <td>${t.l || 0}</td>
-          <td>${goalsStr}</td>
-          <td><div class="form-dots">${formHtml}</div></td>
-        </tr>`;
+        html += `<tr class="${isPlayoffLine ? 'playoff-line' : ''}"><td class="rank">${i + 1}</td><td><div class="st-team">${getLogoHtml(t.team).replace('mc-logo', 'st-logo')} ${t.team}</div></td><td class="pts">${t.pts || 0}</td><td>${t.gp || 0}</td><td>${t.w || 0}</td><td>${t.otw || 0}</td><td>${t.sow || 0}</td><td>${t.sol || 0}</td><td>${t.otl || 0}</td><td>${t.l || 0}</td><td>${goalsStr}</td><td>${formHtml}</td></tr>`;
       });
       tableEl.innerHTML = html + "</tbody>";
     };
-
     renderConf(westRows, tableWest);
     renderConf(eastRows, tableEast);
-    
-  } catch (e) {
-    console.error("Ошибка в loadStandings:", e);
-    const errorHtml = `<tbody><tr><td colspan="12" style="color:#f85149;text-align:center;padding:20px;">Ошибка: ${e.message}</td></tr></tbody>`;
-    tableWest.innerHTML = errorHtml;
-    tableEast.innerHTML = errorHtml;
-  }
+  } catch (e) { console.error(e); }
 }
 
 async function loadNews() {
@@ -272,10 +202,7 @@ async function loadNews() {
     const news = await sb(query);
     const content = document.getElementById("ticker-content"); 
     if (!content) return;
-    if (!news || news.length === 0) { 
-      content.innerHTML = '<span class="ticker-item">Свежих новостей пока нет</span>'; 
-      return; 
-    }
+    if (!news || news.length === 0) { content.innerHTML = '<span class="ticker-item">Свежих новостей пока нет</span>'; return; }
     content.innerHTML = news.map(n => {
       let prefix = "";
       if (n.type === 'injury') prefix = `🏥 [${n.team || 'Лазарет'}] `;
@@ -283,16 +210,10 @@ async function loadNews() {
       else prefix = `🏒 `;
       return `<a class="ticker-item" href="${n.link || '#'}" target="_blank">${prefix}${n.text.replace(/</g, "&lt;")}</a>`;
     }).join("");
-  } catch (e) { 
-    console.error("Ошибка новостей:", e);
-    document.getElementById("ticker-content").innerHTML = `<span class="ticker-item" style="color:red;">Ошибка новостей</span>`;
-  }
+  } catch (e) { console.error(e); }
 }
 
-loadMatches(); 
-loadStandings(); 
-loadNews(); 
-setInterval(loadNews, 300000);
+loadMatches(); loadStandings(); loadNews(); setInterval(loadNews, 300000);
 </script>
 </body>
 </html>

@@ -7,14 +7,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700;900&display=swap" rel="stylesheet">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
-  :root { 
-    --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3; --muted: #8b949e; 
-    --home: #f85149; --visitor: #58a6ff; --goal-bg: rgba(35,134,54,0.15); --goal-border: #238636;
-  }
+  :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3; --muted: #8b949e; --home: #f85149; --visitor: #58a6ff; --goal-bg: rgba(35,134,54,0.15); --goal-border: #238636; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Roboto Condensed', sans-serif; background: var(--bg); color: var(--text); padding-bottom: 60px; display: flex; flex-direction: column; min-height: 100vh; }
   
-  /* Табло */
   .tv-scorebug { display: flex; justify-content: center; align-items: stretch; background: linear-gradient(180deg, rgba(22,27,34,1) 0%, rgba(13,17,23,1) 100%); border-bottom: 2px solid var(--border); height: 70px; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 800px; margin: 0 auto; width: 100%; border-left: 1px solid var(--border); border-right: 1px solid var(--border); border-radius: 0 0 10px 10px; }
   .team-side { display: flex; align-items: center; flex: 1; gap: 8px; }
   .home-side { justify-content: flex-end; padding-right: 15px; }
@@ -31,7 +27,6 @@
   .live-dot { width: 6px; height: 6px; background: #f85149; border-radius: 50%; display: inline-block; margin-right: 4px; animation: pulse 1.5s infinite; }
   @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
-  /* Плашки периодов */
   .period-breakdown { display: none; max-width: 800px; margin: 10px auto 0; padding: 0 12px; width: 100%; }
   .pb-wrapper { display: flex; justify-content: center; gap: 10px; background: var(--card); border-radius: 8px; padding: 10px; border: 1px solid var(--border); }
   .pb-item { display: flex; flex-direction: column; align-items: center; background: #21262d; border-radius: 6px; padding: 6px 15px; min-width: 80px; border: 1px solid transparent; transition: all 0.3s; }
@@ -41,17 +36,14 @@
   .pb-label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; margin-bottom: 2px; }
   .pb-score { font-size: 18px; font-weight: 900; color: #fff; }
 
-  /* Вкладки */
   .tabs { display: flex; justify-content: center; background: var(--card); border-bottom: 1px solid var(--border); margin-bottom: 16px; margin-top: 10px; overflow-x: auto; }
   .tab { padding: 12px 20px; cursor: pointer; font-size: 14px; font-weight: 700; color: var(--muted); border-bottom: 2px solid transparent; text-transform: uppercase; white-space: nowrap; transition: color 0.2s; }
   .tab.active { color: var(--text); border-bottom-color: var(--text); }
   .tab:hover { color: #fff; }
 
-  /* Контейнеры */
   .feed-container, .stats-container, .map-container, .lineups-container { max-width: 800px; margin: 0 auto; padding: 0 12px; display: none; flex-grow: 1; width: 100%; }
   .feed-container.active, .map-container.active, .stats-container.active, .lineups-container.active { display: block; }
 
-  /* Лента */
   .event-list { position: relative; padding-left: 20px; }
   .event-list::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: #30363d; }
   .event { display: flex; align-items: flex-start; background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid transparent; position: relative; animation: slideIn 0.3s ease-out; }
@@ -69,7 +61,6 @@
   .player-link:hover { color: #fff; }
   @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 
-  /* Составы */
   .lineup-grid { display: flex; flex-direction: column; gap: 20px; }
   @media(min-width: 600px) { .lineup-grid { flex-direction: row; } }
   .lineup-col { flex: 1; min-width: 0; }
@@ -79,193 +70,4 @@
   .line-title { background: #21262d; padding: 10px 12px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; }
   .line-title:hover { color: #fff; }
   .line-title::after { content: '▼'; font-size: 10px; transition: transform 0.2s; }
-  .line-box.closed .line-title::after { transform: rotate(-90deg); }
-  .line-box.closed .line-players { display: none; }
-  .line-players { display: flex; flex-direction: column; }
-  .line-player { display: flex; align-items: center; padding: 8px 12px; font-size: 13px; border-bottom: 1px solid #21262d; cursor: pointer; }
-  .line-player:last-child { border-bottom: none; }
-  .line-player:hover { background: #21262d; }
-  .line-player .num { font-weight: 900; color: var(--text); width: 30px; flex-shrink: 0; }
-  .line-player .name { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .line-player .pos { color: var(--muted); font-size: 10px; font-weight: 700; margin-left: 5px; background: #21262d; padding: 2px 4px; border-radius: 4px; }
-
-  /* Карта */
-  .rink-wrapper { background: white; border-radius: 12px; padding: 10px; margin-bottom: 16px; position: relative; }
-  .shot-tooltip { position: absolute; background: rgba(0,0,0,0.9); color: white; padding: 6px 10px; border-radius: 4px; font-size: 13px; font-weight: 700; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 100; white-space: nowrap; }
-  .map-controls { display: flex; gap: 8px; margin-bottom: 12px; justify-content: center; }
-  .map-controls button { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 700; font-family: inherit; transition: all 0.2s; }
-  .map-controls button:hover { border-color: #484f58; }
-  .map-controls button.active { background: var(--home); border-color: var(--home); color: white; }
-  .map-controls button.active.b-btn { background: var(--visitor); border-color: var(--visitor); }
-
-  /* Статистика */
-  .stats-periods { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-  .stats-periods button { background: var(--card); color: var(--muted); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; font-family: inherit; transition: all 0.2s; }
-  .stats-periods button.active { background: #30363d; color: #fff; border-color: #484f58; }
-  .stats-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--card); border-radius: 8px; margin-bottom: 16px; font-size: 18px; font-weight: 900; }
-  .stats-header .h { color: var(--home); } .stats-header .a { color: var(--visitor); }
-  .stat-row { margin-bottom: 14px; }
-  .stat-values { display: flex; justify-content: space-between; font-size: 16px; font-weight: 900; margin-bottom: 4px; }
-  .stat-values .home { color: var(--home); } .stat-values .away { color: var(--visitor); }
-  .stat-title { text-align: center; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-weight: 700; }
-  .stat-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: #21262d; }
-  .stat-bar-home { background: var(--home); height: 100%; transition: width 0.4s; } .stat-bar-away { background: var(--visitor); height: 100%; transition: width 0.4s; }
-  .stat-divider { text-align: center; font-size: 12px; color: #484f58; text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 12px; position: relative; font-weight: 700; }
-  .stat-divider::before, .stat-divider::after { content: ""; position: absolute; top: 50%; width: 30%; height: 1px; background: var(--border); }
-  .stat-divider::before { left: 0; } .stat-divider::after { right: 0; }
-  .stat-percent { display: flex; justify-content: space-between; font-size: 16px; font-weight: 900; padding: 4px 0; }
-  .loading { text-align: center; color: var(--muted); padding: 40px; font-size: 15px; font-weight: 700; }
-  .update-timer { text-align: center; font-size: 12px; color: #484f58; padding: 20px 0; font-weight: 700; }
-
-  /* Модалка */
-  .player-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-  .player-modal-inner { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 90%; max-width: 400px; padding: 24px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-  .close-btn { position: absolute; top: 10px; right: 15px; background: none; border: none; color: var(--muted); font-size: 28px; cursor: pointer; z-index: 10; }
-  .close-btn:hover { color: #fff; }
-  .pm-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
-  .pm-photo { width: 80px; height: 80px; border-radius: 50%; background: #21262d; object-fit: cover; border: 2px solid var(--border); }
-  .pm-title { font-size: 22px; font-weight: 900; margin-bottom: 2px; }
-  .pm-team { font-size: 14px; color: var(--muted); font-weight: 700; }
-  .pm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; }
-  .pm-cell { background: #21262d; padding: 10px; border-radius: 8px; text-align: center; }
-  .pm-cell-title { color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 700; }
-  .pm-cell-val { font-size: 20px; font-weight: 900; color: #fff; margin-top: 2px; }
-
-  /* Бегущая строка */
-  .ticker-wrap { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #000; border-top: 1px solid #30363d; z-index: 99999; display: flex; overflow: hidden; align-items: center; }
-  .ticker-title { background: #f85149; color: #fff; font-weight: 900; padding: 0 15px; height: 100%; display: flex; align-items: center; z-index: 10; white-space: nowrap; }
-  .ticker { display: flex; align-items: center; white-space: nowrap; animation: ticker 180s linear infinite; padding-left: 100vw; }
-  .ticker:hover { animation-play-state: paused; }
-  .ticker-item { color: #e6edf3; font-size: 15px; font-weight: 700; text-decoration: none; padding-right: 40px; }
-  .ticker-item:hover { color: #58a6ff; }
-  @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-</style>
-</head>
-<body>
-
-<div class="tv-scorebug">
-  <div class="team-side home-side"><span class="team-code" id="home-code">...</span><img id="home-logo" class="tiny-logo" style="display:none;"><div class="sog-box"><span>БР</span><b id="home-sog">-</b></div></div>
-  <div class="score-center"><div class="score-numbers"><span id="score-home">0</span><span class="score-divider">:</span><span id="score-away">0</span></div><div class="period-time" id="period-block"><span class="live-dot" id="live-dot"></span><span id="tv-period">Загрузка...</span></div></div>
-  <div class="team-side away-side"><div class="sog-box"><span>БР</span><b id="away-sog">-</b></div><img id="visitor-logo" class="tiny-logo" style="display:none;"><span class="team-code" id="visitor-code">...</span></div>
-</div>
-
-<div id="period-breakdown" class="period-breakdown">
-  <div class="pb-wrapper">
-    <div class="pb-item" id="pb-item-1"><div class="pb-label">1-й период</div><div class="pb-score" id="pb-p1">0 : 0</div></div>
-    <div class="pb-item" id="pb-item-2"><div class="pb-label">2-й период</div><div class="pb-score" id="pb-p2">0 : 0</div></div>
-    <div class="pb-item" id="pb-item-3"><div class="pb-label">3-й период</div><div class="pb-score" id="pb-p3">0 : 0</div></div>
-  </div>
-</div>
-
-<div class="tabs">
-  <div class="tab active" onclick="switchTab('feed')">Лента</div>
-  <div class="tab" onclick="switchTab('lineups')">Составы</div>
-  <div class="tab" onclick="switchTab('map')">Карта</div>
-  <div class="tab" onclick="switchTab('stats')">Статистика</div>
-</div>
-
-<div class="feed-container active" id="feed-container"><div id="feed" class="event-list"><div class="loading">Загрузка...</div></div></div>
-
-<div class="lineups-container" id="lineups-container"><div class="loading">Загрузка составов...</div></div>
-
-<div class="map-container" id="map-container">
-  <div class="map-controls">
-    <button class="active" id="btn-all" onclick="filterShots('all')">Все</button>
-    <button id="btn-home" onclick="filterShots('A')">Хозяева</button>
-    <button id="btn-visitor" class="b-btn" onclick="filterShots('B')">Гости</button>
-  </div>
-  <div style="text-align: center; margin-bottom: 12px;"><select id="player-filter" onchange="filterPlayer(this.value)" style="background:#161b22; color:#e6edf3; border:1px solid #30363d; padding:10px; border-radius:6px; font-size:15px; font-family:inherit; font-weight:700; width:90%; max-width:400px;"><option value="all">Все игроки</option></select></div>
-  <div class="rink-wrapper"><svg id="rink" viewBox="0 0 1000 500" width="100%" height="100%"></svg><div class="shot-tooltip" id="tooltip"></div></div>
-</div>
-
-<div class="stats-container" id="stats-container">
-  <div class="stats-periods">
-    <button class="active" onclick="setStatsPeriod(0)">Весь матч</button><button onclick="setStatsPeriod(1)">1-й</button><button onclick="setStatsPeriod(2)">2-й</button><button onclick="setStatsPeriod(3)">3-й</button>
-  </div>
-  <div id="stats-content"><div class="loading">Загрузка...</div></div>
-</div>
-
-<div class="update-timer" id="update-timer">Обновление данных...</div>
-
-<div class="player-modal" id="player-modal" onclick="closePlayerModal(event)">
-  <div class="player-modal-inner" onclick="event.stopPropagation()">
-    <button type="button" class="close-btn" onclick="closePlayerModal(event)">&times;</button>
-    <div class="pm-header"><img id="pm-photo" class="pm-photo" style="display:none;"><div><div class="pm-title" id="pm-name">Игрок</div><div class="pm-team" id="pm-team">Команда</div></div></div>
-    <div class="pm-grid">
-      <div class="pm-cell"><div class="pm-cell-title">Очки</div><div class="pm-cell-val" id="pm-pts">0</div></div>
-      <div class="pm-cell"><div class="pm-cell-title">Гол + Пас</div><div class="pm-cell-val" id="pm-ga">0 + 0</div></div>
-      <div class="pm-cell"><div class="pm-cell-title">Броски</div><div class="pm-cell-val" id="pm-sog">0</div></div>
-      <div class="pm-cell"><div class="pm-cell-title">Силовые</div><div class="pm-cell-val" id="pm-hits">0</div></div>
-      <div class="pm-cell"><div class="pm-cell-title">+/-</div><div class="pm-cell-val" id="pm-pm">0</div></div>
-      <div class="pm-cell"><div class="pm-cell-title">Время</div><div class="pm-cell-val" id="pm-toi">00:00</div></div>
-    </div>
-  </div>
-</div>
-
-<div class="ticker-wrap">
-  <div class="ticker-title">НОВОСТИ</div>
-  <div class="ticker" id="ticker-content"><span class="ticker-item">Загрузка...</span></div>
-</div>
-
-<script>
-const SUPABASE = "https://xkjwomtycemjbmhjxnio.supabase.co";
-const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhrandvbXR5Y2VtamJtaGp4bmlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3MTk1NTAsImV4cCI6MjEwNzI5NTU1MH0.TqNPgvxf_NfOjv0kU8fwtf5hDegYisVZPjjvX1iAdSs";
-const SUPABASE_STORAGE = "https://xkjwomtycemjbmhjxnio.supabase.co/storage/v1/object/public/logos/";
-const TEAM_LOGOS = { "Ак Барс": "53.png", "Адмирал": "418.png", "Амур": "54.png", "Автомобилист": "190.png", "Авангард": "34.png", "Барыс": "198.png", "Динамо М": "719.png", "Динамо Мн": "207.png", "Лада": "66.png", "Локомотив": "1.png", "Металлург Мг": "37.png", "Нефтехимик": "71.png", "Салават Юлаев": "38.png", "Северсталь": "56.png", "Сибирь": "29.png", "СКА": "24.png", "Спартак": "7.png", "Торпедо НН": "26.png", "Трактор": "25.png", "ХК Сочи": "451.png", "ЦСКА": "2.png", "Шанхай Дрэгонс": "568.png", "Драконы": "568.png" };
-const TEAM_CODES = { "Ак Барс": "АКБ", "Адмирал": "АДМ", "Амур": "АМР", "Автомобилист": "АВТ", "Авангард": "АВГ", "Барыс": "БАР", "Динамо М": "ДИН", "Динамо Мн": "ДМН", "Лада": "ЛАД", "Локомотив": "ЛОК", "Металлург Мг": "ММГ", "Нефтехимик": "НХК", "Салават Юлаев": "САЛ", "Северсталь": "СЕВ", "Сибирь": "СИБ", "СКА": "СКА", "Спартак": "СПА", "Торпедо НН": "ТОР", "Трактор": "ТРК", "ХК Сочи": "СОЧ", "ЦСКА": "ЦСК", "Шанхай Дрэгонс": "ДРК" };
-
-let roster = {}, goalsData = {}, penaltiesData = {}, commentaryData = [], seasonStats = {};
-let lastMaxEventId = 0, homeTeam = "", visitorTeam = "", currentGameid = null, currentMatchData = null;
-let allShots = [], currentShotFilter = 'all', currentPlayerFilter = 'all';
-let currentStatsPeriod = 0, teamStatsData = null, lastUpdateTime = Date.now(), isUpdating = false, lastShotsUpdate = 0;
-
-const cleanNum = (n) => String(n ?? '').trim().replace(/^0+/, '').replace(/\.0$/, '') || '0';
-const parseTimeStr = (str) => { if (!str) return 0; const p = String(str).split(":"); return Number(p[0]) * 60 + Number(p[1]); };
-const parseExtra = (extra) => { if (!extra) return {}; if (typeof extra === "string") { try { return JSON.parse(extra); } catch (e) { return {}; } } return extra; };
-async function sb(path) { try { const r = await fetch(`${SUPABASE}/rest/v1/${path}`, { headers: { "apikey": KEY, "Authorization": "Bearer " + KEY } }); if (!r.ok) return null; return await r.json(); } catch (e) { return null; } }
-
-function updateHeaderTeams(m) {
-  const hCode = document.getElementById("home-code"); if (hCode) hCode.textContent = TEAM_CODES[homeTeam] || homeTeam.substring(0, 3).toUpperCase();
-  const vCode = document.getElementById("visitor-code"); if (vCode) vCode.textContent = TEAM_CODES[visitorTeam] || visitorTeam.substring(0, 3).toUpperCase();
-  const sHome = document.getElementById("score-home"); if (sHome) sHome.textContent = m.home_goals ?? 0;
-  const sAway = document.getElementById("score-away"); if (sAway) sAway.textContent = m.visitor_goals ?? 0;
-  const hLogo = document.getElementById("home-logo"); if (hLogo) { if (TEAM_LOGOS[homeTeam]) { hLogo.src = SUPABASE_STORAGE + TEAM_LOGOS[homeTeam]; hLogo.style.display = "block"; } else { hLogo.style.display = "none"; } }
-  const vLogo = document.getElementById("visitor-logo"); if (vLogo) { if (TEAM_LOGOS[visitorTeam]) { vLogo.src = SUPABASE_STORAGE + TEAM_LOGOS[visitorTeam]; vLogo.style.display = "block"; } else { vLogo.style.display = "none"; } }
-}
-
-async function loadSeasonStats() { const s = await sb(`team_season?select=team,pp_pct,pk_pct`); if (s) s.forEach(t => { seasonStats[t.team] = t; }); }
-
-async function loadRoster() {
-  if (!currentGameid) return;
-  try {
-    const identity = await sb(`identity?select=team,num,player,photo&or=(team.eq.${encodeURIComponent(homeTeam)},team.eq.${encodeURIComponent(visitorTeam)})`);
-    if (identity) identity.forEach(p => { const numStr = cleanNum(p.num || ""); if (!numStr) return; const ab = p.team === homeTeam ? "A" : "B"; roster[`${ab}_${numStr}`] = { name: p.player.split(" ")[0], fullName: p.player, g: 0, a: 0, sog: 0, hits: 0, pm: 0, toi: "00:00", team: p.team, photo: p.photo }; });
-    const players = await sb(`players_stats?gameid=eq.${currentGameid}`);
-    if (players) players.forEach(p => { const numStr = cleanNum(p.num || p.jn || ""); if (!numStr) return; const ab = p.team === homeTeam ? "A" : "B"; const key = `${ab}_${numStr}`; if (!roster[key]) roster[key] = { name: p.player.split(" ")[0], fullName: p.player, team: p.team, photo: p.photo || null }; roster[key].g = p.g; roster[key].a = p.a; roster[key].sog = p.sog; roster[key].hits = p.hits; roster[key].pm = p.pm; roster[key].toi = p.toi; });
-  } catch (e) {}
-}
-
-async function loadGoals() {
-  if (!currentGameid) return;
-  goalsData = {};
-  let scoreA = 0, scoreB = 0;
-  const goals = await sb('goals?gameid=eq.' + currentGameid);
-  if (goals && goals.length > 0) {
-    goals.forEach(g => { goalsData[`${g.period}_${g.time_ms}`] = { time_ms: g.time_ms, period: g.period, team: g.team, assist_1: g.assist_1, assist_2: g.assist_2, score_a: g.score_a, score_b: g.score_b }; });
-  }
-  const liveGoals = await sb('game_legend?gameid=eq.' + currentGameid + '&type=eq.goal');
-  if (liveGoals && liveGoals.length > 0) {
-    liveGoals.sort((a, b) => Number(a.period) - Number(b.period) || parseTimeStr(a.time_ms) - parseTimeStr(b.time_ms));
-    liveGoals.forEach(g => {
-      const key = `${g.period}_${g.time_ms}`;
-      const ex = parseExtra(g.extra);
-      if (!goalsData[key]) { goalsData[key] = { time_ms: g.time_ms, period: g.period, team: g.team_ab === 'A' ? homeTeam : visitorTeam, assist_1: ex.assist_1?.name || null, assist_2: ex.assist_2?.name || null, score_a: ex.scA || 0, score_b: ex.scB || 0 }; }
-      else { if (ex.scA !== undefined) goalsData[key].score_a = ex.scA; if (ex.scB !== undefined) goalsData[key].score_b = ex.scB; }
-    });
-  }
-  Object.values(goalsData).forEach(g => { if (g.score_a !== undefined) scoreA = g.score_a; if (g.score_b !== undefined) scoreB = g.score_b; });
-  document.getElementById("score-home").textContent = scoreA;
-  document.getElementById("score-away").textContent = scoreB;
-}
-
-async function loadPenalties() { if (!currentGameid) return; const pens = await sb(`penalties?gameid=eq.${
+  .line-box.closed .line-title::after { transform:
