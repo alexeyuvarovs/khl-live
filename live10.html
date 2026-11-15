@@ -289,12 +289,51 @@ async function loadSeasonStats() { const s = await sb(`team_season?select=team,p
 
 async function loadRoster() {
   if (!currentGameid) return;
+  roster = {}; // СБРАСЫВАЕМ, чтобы не было мусора
   try {
+    // Загружаем identity
     const identity = await sb(`identity?select=team,num,player,photo&or=(team.eq.${encodeURIComponent(homeTeam)},team.eq.${encodeURIComponent(visitorTeam)})`);
-    if (identity) identity.forEach(p => { const numStr = cleanNum(p.num || ""); if (!numStr) return; const ab = p.team === homeTeam ? "A" : "B"; roster[`${ab}_${numStr}`] = { name: p.player.split(" ")[0], fullName: p.player, g: 0, a: 0, sog: 0, hits: 0, pm: 0, toi: "00:00", team: p.team, photo: p.photo }; });
+    if (identity) identity.forEach(p => {
+      const numStr = cleanNum(p.num || "");
+      if (!numStr) return;
+      const ab = (p.team === homeTeam) ? "A" : "B";
+      roster[`${ab}_${numStr}`] = {
+        name: p.player.split(" ")[0],
+        fullName: p.player,
+        team: p.team,
+        photo: p.photo,
+        g: 0, a: 0, sog: 0, hits: 0, pm: 0, toi: "00:00"
+      };
+    });
+
+    // Загружаем players_stats
     const players = await sb(`players_stats?gameid=eq.${currentGameid}`);
-    if (players) players.forEach(p => { const numStr = cleanNum(p.num || p.jn || ""); if (!numStr) return; const ab = p.team === homeTeam ? "A" : "B"; const key = `${ab}_${numStr}`; if (!roster[key]) roster[key] = { name: p.player.split(" ")[0], fullName: p.player, team: p.team, photo: p.photo || null }; roster[key].g = p.g; roster[key].a = p.a; roster[key].sog = p.sog; roster[key].hits = p.hits; roster[key].pm = p.pm; roster[key].toi = p.toi; });
-  } catch (e) {}
+    if (players) players.forEach(p => {
+      const numStr = cleanNum(p.num || p.jn || "");
+      if (!numStr) return;
+      const ab = (p.team === homeTeam) ? "A" : "B";
+      const key = `${ab}_${numStr}`;
+      if (!roster[key]) {
+        roster[key] = {
+          name: p.player.split(" ")[0],
+          fullName: p.player,
+          team: p.team,
+          photo: p.photo || null,
+          g: 0, a: 0, sog: 0, hits: 0, pm: 0, toi: "00:00"
+        };
+      }
+      roster[key].g = p.g || 0;
+      roster[key].a = p.a || 0;
+      roster[key].sog = p.sog || 0;
+      roster[key].hits = p.hits || 0;
+      roster[key].pm = p.pm || 0;
+      roster[key].toi = p.toi || "00:00";
+    });
+    
+    console.log("✅ Roster загружен:", Object.keys(roster).length, "игроков");
+    console.log("Ключи:", Object.keys(roster).slice(0, 5));
+    
+  } catch (e) { console.error("Ошибка loadRoster:", e); }
 }
 
 async function loadGoals() {
@@ -355,20 +394,28 @@ async function loadFeed() {
         if (e.jn && e.jn !== "0") { const pObj = roster[`${e.team_ab}_${cleanNum(e.jn)}`]; if (pObj) playerName = `<b class="player-link" onclick="showPlayerModal('${e.team_ab}', '${cleanNum(e.jn)}')">${pObj.name}</b>`; else playerName = `№${e.jn}`; }
         let icon = "", title = "", details = "", extraHtml = "";
         switch (e.type) {
-          case "goal": {
+            case "goal": {
             icon = "🚨"; title = "ГОЛ!"; 
             const ex = parseExtra(e.extra);
-            const scorer = ex.scorer?.name || (roster[`${e.team_ab}_${cleanNum(e.jn)}`]?.name) || `№${e.jn}`;
-            const assist1 = ex.assist_1?.name;
-            const assist2 = ex.assist_2?.name;
+            
+            // Ищем игрока в roster по номеру
+            const pObj = roster[`${e.team_ab}_${cleanNum(e.jn)}`];
+            let scorerHtml = "";
+            
+            if (pObj) {
+                scorerHtml = `<b class="player-link" onclick="showPlayerModal('${e.team_ab}', '${cleanNum(e.jn)}')">${pObj.name}</b>`;
+            } else {
+                scorerHtml = `<b>№${e.jn}</b>`;
+            }
+            
             const scoreA = ex.scA !== undefined ? ex.scA : '';
             const scoreB = ex.scB !== undefined ? ex.scB : '';
-            let assistStr = "";
-            if (assist1 || assist2) { assistStr = `<div class="assists">Ассисты: <b>${assist1 || ''}</b>${assist2 ? ', <b>' + assist2 + '</b>' : ''}</div>`; }
+            
             let scoreStr = "";
             if (scoreA !== '' && scoreB !== '') { scoreStr = `<div class="score-after">Счёт: ${scoreA} : ${scoreB}</div>`; }
-            details = `<span class="${teamClass}">${teamName}</span> <b>${scorer}</b>`; 
-            extraHtml = assistStr + scoreStr;
+            
+            details = `<span class="${teamClass}">${teamName}</span> ${scorerHtml}`; 
+            extraHtml = scoreStr;
             break;
           }
           case "shot": { if (e.result === "miss") return ""; icon = "🎯"; title = "Бросок"; details = `${playerName} (${teamName})`; break; }
