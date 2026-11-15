@@ -7,15 +7,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700;900&display=swap" rel="stylesheet">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
-  :root { 
-    --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3; --muted: #8b949e; 
-    --home: #f85149; --visitor: #58a6ff; --goal-bg: rgba(35,134,54,0.15); --goal-border: #238636;
-    --win: #238636; --draw: #d29922; --lose: #f85149;
-  }
+  :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3; --muted: #8b949e; --home: #f85149; --visitor: #58a6ff; --goal-bg: rgba(35,134,54,0.15); --goal-border: #238636; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Roboto Condensed', sans-serif; background: var(--bg); color: var(--text); padding-bottom: 60px; display: flex; flex-direction: column; min-height: 100vh; }
   
-  /* Табло */
   .tv-scorebug { display: flex; justify-content: center; align-items: stretch; background: linear-gradient(180deg, rgba(22,27,34,1) 0%, rgba(13,17,23,1) 100%); border-bottom: 2px solid var(--border); height: 70px; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.5); max-width: 800px; margin: 0 auto; width: 100%; border-left: 1px solid var(--border); border-right: 1px solid var(--border); border-radius: 0 0 10px 10px; }
   .team-side { display: flex; align-items: center; flex: 1; gap: 8px; }
   .home-side { justify-content: flex-end; padding-right: 15px; }
@@ -32,35 +27,17 @@
   .live-dot { width: 6px; height: 6px; background: #f85149; border-radius: 50%; display: inline-block; margin-right: 4px; animation: pulse 1.5s infinite; }
   @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
-  /* Плашки периодов */
-  .period-breakdown { display: none; max-width: 800px; margin: 10px auto 0; padding: 0 12px; width: 100%; }
-  .pb-wrapper { display: flex; justify-content: center; gap: 10px; background: var(--card); border-radius: 8px; padding: 10px; border: 1px solid var(--border); }
-  .pb-item { display: flex; flex-direction: column; align-items: center; background: #21262d; border-radius: 6px; padding: 6px 15px; min-width: 80px; border: 1px solid transparent; transition: all 0.3s; }
-  .pb-item.win-home { border-color: var(--home); box-shadow: 0 0 10px rgba(248,81,73,0.2); }
-  .pb-item.win-away { border-color: var(--visitor); box-shadow: 0 0 10px rgba(88,166,255,0.2); }
-  .pb-item.draw { border-color: var(--muted); }
-  .pb-label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; margin-bottom: 2px; }
-  .pb-score { font-size: 18px; font-weight: 900; color: #fff; }
-
-  /* Вкладки */
   .tabs { display: flex; justify-content: center; background: var(--card); border-bottom: 1px solid var(--border); margin-bottom: 16px; margin-top: 10px; overflow-x: auto; }
-  .tab { padding: 12px 20px; cursor: pointer; font-size: 14px; font-weight: 700; color: var(--muted); border-bottom: 2px solid transparent; text-transform: uppercase; white-space: nowrap; transition: color 0.2s; }
+  .tab { padding: 12px 20px; cursor: pointer; font-size: 14px; font-weight: 700; color: var(--muted); border-bottom: 2px solid transparent; text-transform: uppercase; white-space: nowrap; }
   .tab.active { color: var(--text); border-bottom-color: var(--text); }
-  .tab:hover { color: #fff; }
 
-  /* Контейнеры */
   .feed-container, .stats-container, .map-container, .lineups-container { max-width: 800px; margin: 0 auto; padding: 0 12px; display: none; flex-grow: 1; width: 100%; }
   .feed-container.active, .map-container.active, .stats-container.active, .lineups-container.active { display: block; }
 
-  /* Лента */
-  .event-list { position: relative; padding-left: 20px; }
-  .event-list::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: #30363d; }
-  .event { display: flex; align-items: flex-start; background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid transparent; position: relative; animation: slideIn 0.3s ease-out; }
-  .event::before { content: ''; position: absolute; left: -16px; top: 16px; width: 10px; height: 10px; border-radius: 50%; background: var(--border); border: 2px solid var(--bg); z-index: 2; }
+  .event { display: flex; align-items: flex-start; background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid transparent; }
   .event.goal { background: var(--goal-bg); border-color: var(--goal-border); }
-  .event.goal::before { background: var(--goal-border); }
   .time { font-size: 14px; color: var(--muted); font-weight: 700; width: 45px; flex-shrink: 0; margin-top: 1px; }
-  .icon { font-size: 20px; margin-right: 12px; flex-shrink: 0; }
+  .icon { font-size: 18px; margin-right: 12px; flex-shrink: 0; }
   .event-body { flex-grow: 1; font-size: 15px; line-height: 1.3; }
   .event-title { font-weight: 700; margin-bottom: 2px; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px; }
   .assists { font-size: 13px; color: var(--muted); margin-top: 4px; }
@@ -68,40 +45,30 @@
   .team-a-text { color: var(--home); font-weight: 700; } .team-b-text { color: var(--visitor); font-weight: 700; }
   .player-link { cursor: pointer; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.2); }
   .player-link:hover { color: #fff; }
-  @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 
-  /* Составы */
+  .lineup-header { display: flex; justify-content: space-between; padding: 10px; font-weight: 900; font-size: 18px; text-transform: uppercase; margin-bottom: 10px; }
+  .lineup-header .home { color: var(--home); } .lineup-header .away { color: var(--visitor); text-align: right; }
   .lineup-grid { display: flex; flex-direction: column; gap: 20px; }
   @media(min-width: 600px) { .lineup-grid { flex-direction: row; } }
   .lineup-col { flex: 1; min-width: 0; }
-  .lineup-header { display: flex; justify-content: space-between; padding: 10px; font-weight: 900; font-size: 18px; text-transform: uppercase; margin-bottom: 10px; }
-  .lineup-header .home { color: var(--home); } .lineup-header .away { color: var(--visitor); text-align: right; }
-  .line-box { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
-  .line-title { background: #21262d; padding: 10px 12px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; }
-  .line-title:hover { color: #fff; }
-  .line-title::after { content: '▼'; font-size: 10px; transition: transform 0.2s; }
-  .line-box.closed .line-title::after { transform: rotate(-90deg); }
-  .line-box.closed .line-players { display: none; }
+  .line-box { background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px; overflow: hidden; }
+  .line-title { background: #21262d; padding: 8px 12px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; border-bottom: 1px solid var(--border); }
   .line-players { display: flex; flex-direction: column; }
-  .line-player { display: flex; align-items: center; padding: 8px 12px; font-size: 13px; border-bottom: 1px solid #21262d; cursor: pointer; }
+  .line-player { display: flex; align-items: center; padding: 8px 12px; font-size: 13px; border-bottom: 1px solid #21262d; }
   .line-player:last-child { border-bottom: none; }
-  .line-player:hover { background: #21262d; }
   .line-player .num { font-weight: 900; color: var(--text); width: 30px; flex-shrink: 0; }
   .line-player .name { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .line-player .pos { color: var(--muted); font-size: 10px; font-weight: 700; margin-left: 5px; background: #21262d; padding: 2px 4px; border-radius: 4px; }
 
-  /* Карта */
   .rink-wrapper { background: white; border-radius: 12px; padding: 10px; margin-bottom: 16px; position: relative; }
   .shot-tooltip { position: absolute; background: rgba(0,0,0,0.9); color: white; padding: 6px 10px; border-radius: 4px; font-size: 13px; font-weight: 700; pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 100; white-space: nowrap; }
   .map-controls { display: flex; gap: 8px; margin-bottom: 12px; justify-content: center; }
-  .map-controls button { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 700; font-family: inherit; transition: all 0.2s; }
-  .map-controls button:hover { border-color: #484f58; }
+  .map-controls button { background: var(--card); color: var(--text); border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 700; font-family: inherit; }
   .map-controls button.active { background: var(--home); border-color: var(--home); color: white; }
   .map-controls button.active.b-btn { background: var(--visitor); border-color: var(--visitor); }
 
-  /* Статистика */
-  .stats-periods { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-  .stats-periods button { background: var(--card); color: var(--muted); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; font-family: inherit; transition: all 0.2s; }
+  .stats-periods { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
+  .stats-periods button { background: var(--card); color: var(--muted); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; font-family: inherit; }
   .stats-periods button.active { background: #30363d; color: #fff; border-color: #484f58; }
   .stats-header { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--card); border-radius: 8px; margin-bottom: 16px; font-size: 18px; font-weight: 900; }
   .stats-header .h { color: var(--home); } .stats-header .a { color: var(--visitor); }
@@ -118,12 +85,10 @@
   .loading { text-align: center; color: var(--muted); padding: 40px; font-size: 15px; font-weight: 700; }
   .update-timer { text-align: center; font-size: 12px; color: #484f58; padding: 20px 0; font-weight: 700; }
 
-  /* Модалка */
-  .player-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-  .player-modal-inner { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 90%; max-width: 400px; padding: 24px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  .player-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+  .player-modal-inner { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 90%; max-width: 400px; padding: 20px; position: relative; }
   .close-btn { position: absolute; top: 10px; right: 15px; background: none; border: none; color: var(--muted); font-size: 28px; cursor: pointer; z-index: 10; }
-  .close-btn:hover { color: #fff; }
-  .pm-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
+  .pm-header { display: flex; align-items: center; gap: 15px; margin-bottom: 16px; }
   .pm-photo { width: 80px; height: 80px; border-radius: 50%; background: #21262d; object-fit: cover; border: 2px solid var(--border); }
   .pm-title { font-size: 22px; font-weight: 900; margin-bottom: 2px; }
   .pm-team { font-size: 14px; color: var(--muted); font-weight: 700; }
@@ -132,25 +97,30 @@
   .pm-cell-title { color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 700; }
   .pm-cell-val { font-size: 20px; font-weight: 900; color: #fff; margin-top: 2px; }
 
-  /* ЧАТ */
-  .chat-container { margin-top: 20px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; height: 400px; }
-  .chat-header { display: flex; justify-content: space-between; padding: 10px 15px; background: #21262d; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
-  .chat-online { color: var(--muted); font-size: 12px; }
+  .chat-fab { position: fixed; bottom: 60px; right: 20px; width: 60px; height: 60px; background: var(--visitor); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; cursor: pointer; box-shadow: 0 4px 15px rgba(88,166,255,0.4); z-index: 9998; transition: transform 0.2s; }
+  .chat-fab:hover { transform: scale(1.1); }
+  .chat-window { position: fixed; bottom: 130px; right: 20px; width: 350px; height: 450px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; display: none; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 9999; overflow: hidden; animation: slideUp 0.3s ease-out; }
+  .chat-window.open { display: flex; }
+  @media (max-width: 600px) { .chat-window { width: calc(100% - 40px); right: 20px; bottom: 130px; height: 50vh; } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: #21262d; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
+  .chat-header-buttons { display: flex; gap: 10px; align-items: center; }
+  .chat-nick-btn { background: none; border: none; color: var(--visitor); cursor: pointer; font-size: 11px; font-weight: 700; padding: 0; }
+  .chat-nick-btn:hover { text-decoration: underline; }
+  .chat-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; padding: 0 5px; }
+  .chat-close:hover { color: #fff; }
   .chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-  .chat-loading { text-align: center; color: var(--muted); font-size: 13px; margin-top: 20px; }
   .chat-msg { display: flex; flex-direction: column; max-width: 85%; }
   .chat-msg.own { align-self: flex-end; align-items: flex-end; }
-  .chat-msg .msg-author { font-size: 11px; color: var(--muted); margin-bottom: 2px; font-weight: 700; }
+  .chat-msg .msg-author { font-size: 11px; color: var(--muted); margin-bottom: 2px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
   .chat-msg .msg-bubble { background: #21262d; padding: 8px 12px; border-radius: 12px; border-bottom-left-radius: 2px; font-size: 14px; word-wrap: break-word; }
   .chat-msg.own .msg-bubble { background: #1f6feb; color: #fff; border-bottom-left-radius: 12px; border-bottom-right-radius: 2px; }
   .chat-msg .msg-time { font-size: 10px; color: #484f58; margin-top: 2px; }
-  .chat-input-wrap { display: flex; padding: 10px; background: #21262d; border-top: 1px solid var(--border); gap: 8px; }
-  .chat-input-wrap input { flex-grow: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; color: var(--text); font-family: inherit; font-size: 14px; }
+  .chat-input-wrap { display: flex; padding: 10px; background: #21262d; border-top: 1px solid var(--border); gap: 6px; }
+  .chat-input-wrap input { flex-grow: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: var(--text); font-family: inherit; font-size: 13px; }
   .chat-input-wrap input:focus { outline: none; border-color: var(--visitor); }
-  .chat-input-wrap button { background: var(--visitor); border: none; color: #fff; border-radius: 6px; padding: 0 15px; cursor: pointer; font-size: 18px; transition: background 0.2s; }
-  .chat-input-wrap button:hover { background: #409eff; }
+  .chat-input-wrap button { background: var(--visitor); border: none; color: #fff; border-radius: 6px; padding: 0 12px; cursor: pointer; font-size: 16px; }
 
-  /* Бегущая строка */
   .ticker-wrap { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #000; border-top: 1px solid #30363d; z-index: 99999; display: flex; overflow: hidden; align-items: center; }
   .ticker-title { background: #f85149; color: #fff; font-weight: 900; padding: 0 15px; height: 100%; display: flex; align-items: center; z-index: 10; white-space: nowrap; }
   .ticker { display: flex; align-items: center; white-space: nowrap; animation: ticker 180s linear infinite; padding-left: 100vw; }
@@ -168,14 +138,6 @@
   <div class="team-side away-side"><div class="sog-box"><span>БР</span><b id="away-sog">-</b></div><img id="visitor-logo" class="tiny-logo" style="display:none;"><span class="team-code" id="visitor-code">...</span></div>
 </div>
 
-<div id="period-breakdown" class="period-breakdown">
-  <div class="pb-wrapper">
-    <div class="pb-item" id="pb-item-1"><div class="pb-label">1-й период</div><div class="pb-score" id="pb-p1">0 : 0</div></div>
-    <div class="pb-item" id="pb-item-2"><div class="pb-label">2-й период</div><div class="pb-score" id="pb-p2">0 : 0</div></div>
-    <div class="pb-item" id="pb-item-3"><div class="pb-label">3-й период</div><div class="pb-score" id="pb-p3">0 : 0</div></div>
-  </div>
-</div>
-
 <div class="tabs">
   <div class="tab active" onclick="switchTab('feed')">Лента</div>
   <div class="tab" onclick="switchTab('lineups')">Составы</div>
@@ -183,26 +145,7 @@
   <div class="tab" onclick="switchTab('stats')">Статистика</div>
 </div>
 
-<div class="feed-container active" id="feed-container">
-  <div id="feed" class="event-list"><div class="loading">Загрузка...</div></div>
-  
-    <!-- Блок чата -->
-  <div class="chat-container" id="chat-container">
-    <div class="chat-header">
-      <span>💬 Чат болельщиков</span>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <span class="chat-online" id="chat-online">Live</span>
-        <button onclick="changeNick()" style="background:none; border:none; color:#58a6ff; cursor:pointer; font-size:12px; font-weight:700; padding:0;">Сменить ник</button>
-      </div>
-    </div>
-    <div class="chat-messages" id="chat-messages">
-      <div class="chat-loading">Загрузка сообщений...</div>
-    </div>
-    <div class="chat-input-wrap">
-      <input type="text" id="chat-input" placeholder="Напишите что-нибудь..." maxlength="300" autocomplete="off">
-      <button id="chat-send" onclick="sendChatMessage()">➤</button>
-    </div>
-  </div>
+<div class="feed-container active" id="feed-container"><div id="feed"><div class="loading">Загрузка...</div></div></div>
 
 <div class="lineups-container" id="lineups-container"><div class="loading">Загрузка составов...</div></div>
 
@@ -212,7 +155,7 @@
     <button id="btn-home" onclick="filterShots('A')">Хозяева</button>
     <button id="btn-visitor" class="b-btn" onclick="filterShots('B')">Гости</button>
   </div>
-  <div style="text-align: center; margin-bottom: 12px;"><select id="player-filter" onchange="filterPlayer(this.value)" style="background:#161b22; color:#e6edf3; border:1px solid #30363d; padding:10px; border-radius:6px; font-size:15px; font-family:inherit; font-weight:700; width:90%; max-width:400px;"><option value="all">Все игроки</option></select></div>
+  <div style="text-align: center; margin-bottom: 12px;"><select id="player-filter" onchange="filterPlayer(this.value)" style="background:#161b22; color:#e6edf3; border:1px solid #30363d; padding:10px; border-radius:6px; font-size:15px; font-family:inherit; font-weight:700; width:90%;"><option value="all">Все игроки</option></select></div>
   <div class="rink-wrapper"><svg id="rink" viewBox="0 0 1000 500" width="100%" height="100%"></svg><div class="shot-tooltip" id="tooltip"></div></div>
 </div>
 
@@ -240,6 +183,24 @@
   </div>
 </div>
 
+<div class="chat-fab" id="chat-fab" onclick="toggleChat()">💬</div>
+<div class="chat-window" id="chat-window">
+  <div class="chat-header">
+    <span>💬 Чат болельщиков</span>
+    <div class="chat-header-buttons">
+      <button onclick="changeNick()" class="chat-nick-btn">Сменить ник</button>
+      <button class="chat-close" onclick="toggleChat()">&times;</button>
+    </div>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-loading">Загрузка...</div>
+  </div>
+  <div class="chat-input-wrap">
+    <input type="text" id="chat-input" placeholder="Напишите..." maxlength="300" autocomplete="off">
+    <button id="chat-send" onclick="sendChatMessage()">➤</button>
+  </div>
+</div>
+
 <div class="ticker-wrap">
   <div class="ticker-title">НОВОСТИ</div>
   <div class="ticker" id="ticker-content"><span class="ticker-item">Загрузка...</span></div>
@@ -262,8 +223,6 @@ const cleanNum = (n) => String(n ?? '').trim().replace(/^0+/, '').replace(/\.0$/
 const parseTimeStr = (str) => { if (!str) return 0; const p = String(str).split(":"); return Number(p[0]) * 60 + Number(p[1]); };
 const parseExtra = (extra) => { if (!extra) return {}; if (typeof extra === "string") { try { return JSON.parse(extra); } catch (e) { return {}; } } return extra; };
 async function sb(path) { try { const r = await fetch(`${SUPABASE}/rest/v1/${path}`, { headers: { "apikey": KEY, "Authorization": "Bearer " + KEY } }); if (!r.ok) return null; return await r.json(); } catch (e) { return null; } }
-
-function getLogoHtml(team) { const logo = TEAM_LOGOS[team] || TEAM_LOGOS[team.replace(" НН", "")]; return logo ? `<img src="${SUPABASE_STORAGE}${logo}" class="mc-logo" onerror="this.style.display='none'">` : ""; }
 
 function updateHeaderTeams(m) {
   const hCode = document.getElementById("home-code"); if (hCode) hCode.textContent = TEAM_CODES[homeTeam] || homeTeam.substring(0, 3).toUpperCase();
@@ -342,7 +301,9 @@ async function loadFeed() {
         const isGoal = e.type === "goal", isA = e.team_ab === "A", teamClass = isA ? "team-a-text" : "team-b-text", teamName = isA ? homeTeam : visitorTeam;
         let playerName = "";
         if (e.jn && e.jn !== "0") { const pObj = roster[`${e.team_ab}_${cleanNum(e.jn)}`]; if (pObj) playerName = `<b class="player-link" onclick="showPlayerModal('${e.team_ab}', '${cleanNum(e.jn)}')">${pObj.name}</b>`; else playerName = `№${e.jn}`; }
+        
         let icon = "", title = "", details = "", extraHtml = "";
+        
         switch (e.type) {
           case "goal": {
             icon = "🚨"; title = "ГОЛ!"; details = `<span class="${teamClass}">${teamName}</span> ${playerName}`; 
@@ -378,69 +339,52 @@ async function loadFeed() {
         return `<div class="event ${isGoal ? 'goal' : ''}"><div class="time">${e.time_ms}</div><div class="icon">${icon}</div><div class="event-body"><div class="event-title">${title}</div><div class="event-details">${details}</div>${extraHtml}</div></div>`;
       }
     }).join('');
+
     feed.innerHTML = unifiedHtml;
-  } catch (err) { console.error("Ошибка в loadFeed:", err); }
+  } catch (err) { 
+    console.error("Ошибка в loadFeed:", err); 
+  }
   
   let p1_h = 0, p1_v = 0, p2_h = 0, p2_v = 0, p3_h = 0, p3_v = 0;
+  
   Object.values(goalsData).forEach(g => {
-    if (g.team === homeTeam) { if (g.period === 1) p1_h++; else if (g.period === 2) p2_h++; else if (g.period === 3) p3_h++; }
-    else if (g.team === visitorTeam) { if (g.period === 1) p1_v++; else if (g.period === 2) p2_v++; else if (g.period === 3) p3_v++; }
+    if (g.team === homeTeam) {
+      if (g.period === 1) p1_h++; else if (g.period === 2) p2_h++; else if (g.period === 3) p3_h++;
+    } else if (g.team === visitorTeam) {
+      if (g.period === 1) p1_v++; else if (g.period === 2) p2_v++; else if (g.period === 3) p3_v++;
+    }
   });
 
   if (Object.keys(goalsData).length > 0) {
     const pbContainer = document.getElementById("period-breakdown");
     if (pbContainer) {
       pbContainer.style.display = "block";
-      document.getElementById("pb-p1").textContent = `${p1_h} : ${p1_v}`;
-      document.getElementById("pb-p2").textContent = `${p2_h} : ${p2_v}`;
-      document.getElementById("pb-p3").textContent = `${p3_h} : ${p3_v}`;
-      ["pb-item-1", "pb-item-2", "pb-item-3"].forEach((id, idx) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.classList.remove("win-home", "win-away", "draw");
-        const h = [p1_h, p2_h, p3_h][idx], v = [p1_v, p2_v, p3_v][idx];
-        if (h > v) el.classList.add("win-home");
-        else if (v > h) el.classList.add("win-away");
-        else el.classList.add("draw");
-      });
+      document.getElementById("pb-home").textContent = homeTeam;
+      document.getElementById("pb-visitor").textContent = visitorTeam;
+      document.getElementById("pb-p1").textContent = `1-й: ${p1_h} - ${p1_v}`;
+      document.getElementById("pb-p2").textContent = `2-й: ${p2_h} - ${p2_v}`;
+      document.getElementById("pb-p3").textContent = `3-й: ${p3_h} - ${p3_v}`;
     }
   }
 }
 
 function updateHeaderStats(events, maxPeriod) {
   let sA = 0, sB = 0; events.forEach(e => { if (e.type === 'shot' && e.result !== 'miss') { if (e.team_ab === 'A') sA++; else sB++; } });
-  const hSog = document.getElementById("home-sog"); if(hSog) hSog.textContent = sA;
-  const aSog = document.getElementById("away-sog"); if(aSog) aSog.textContent = sB;
-  if (currentMatchData?.winner) { const tp = document.getElementById("tv-period"); if(tp) tp.textContent = "Матч завершён"; const ld = document.getElementById("live-dot"); if(ld) ld.style.display = "none"; }
-  else { const perNames = { 1: "1ST", 2: "2ND", 3: "3RD", 4: "OT" }; const tp = document.getElementById("tv-period"); if(tp) tp.textContent = perNames[maxPeriod] || `${maxPeriod}-й период`; const ld = document.getElementById("live-dot"); if(ld) ld.style.display = "inline-block"; }
+  document.getElementById("home-sog").textContent = sA; document.getElementById("away-sog").textContent = sB;
+  if (currentMatchData?.winner) { document.getElementById("tv-period").textContent = "Матч завершён"; document.getElementById("live-dot").style.display = "none"; }
+  else { const perNames = { 1: "1ST", 2: "2ND", 3: "3RD", 4: "OT" }; document.getElementById("tv-period").textContent = perNames[maxPeriod] || `${maxPeriod}-й период`; document.getElementById("live-dot").style.display = "inline-block"; }
+  renderTimeline();
 }
 
 function renderTimeline() {
   const container = document.getElementById("timeline-container"), bar = document.getElementById("timeline-bar"), labels = document.getElementById("tl-labels");
   if(!container || !bar) return;
   const goals = Object.values(goalsData).sort((a, b) => a.period !== b.period ? a.period - b.period : parseTimeStr(a.time_ms) - parseTimeStr(b.time_ms));
-  if (goals.length === 0) { container.style.display = "none"; return; } 
-  container.style.display = "block";
+  if (goals.length === 0) { container.style.display = "none"; return; } container.style.display = "block";
   const maxPeriod = Math.max(...goals.map(g => Number(g.period))), hasOT = maxPeriod >= 4, totalMin = hasOT ? 65 : 60, numP = hasOT ? 4 : 3;
-  bar.innerHTML = ''; 
-  for (let i = 1; i < numP; i++) { 
-    const div = document.createElement("div"); 
-    div.style.cssText = "position:absolute;top:0;bottom:0;width:1px;background:#30363d;"; 
-    div.style.left = (i * (100 / numP)) + "%"; 
-    bar.appendChild(div); 
-  }
-  if(labels) labels.innerHTML = hasOT ? "<span>0'</span><span>20'</span><span>40'</span><span>60'</span><span>65'</span>" : "<span>0'</span><span>20'</span><span>40'</span><span>60'</span>";
-  goals.forEach(g => { 
-    const minP = parseTimeStr(g.time_ms) / 60, absM = (Number(g.period) - 1) * 20 + minP; 
-    let pos = (absM / totalMin) * 100; 
-    if (isNaN(pos)) pos = 50; 
-    pos = Math.min(97, Math.max(3, pos)); 
-    const color = g.team === homeTeam ? "#f85149" : "#58a6ff"; 
-    const marker = document.createElement("div"); 
-    marker.style.cssText = `position:absolute;top:50%;transform:translate(-50%,-50%);height:18px;min-width:24px;padding:0 4px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:white;cursor:pointer;left:${pos}%;background:${color};border:2px solid #0d1117;z-index:10;`; 
-    marker.textContent = `${g.score_a}:${g.score_b}`; 
-    bar.appendChild(marker); 
-  });
+  bar.innerHTML = ''; for (let i = 1; i < numP; i++) { const div = document.createElement("div"); div.style.cssText = "position:absolute;top:0;bottom:0;width:1px;background:#30363d;"; div.style.left = (i * (100 / numP)) + "%"; bar.appendChild(div); }
+  labels.innerHTML = hasOT ? "<span>0'</span><span>20'</span><span>40'</span><span>60'</span><span>65'</span>" : "<span>0'</span><span>20'</span><span>40'</span><span>60'</span>";
+  goals.forEach(g => { const minP = parseTimeStr(g.time_ms) / 60, absM = (Number(g.period) - 1) * 20 + minP; let pos = (absM / totalMin) * 100; if (isNaN(pos)) pos = 50; pos = Math.min(97, Math.max(3, pos)); const color = g.team === homeTeam ? "#f85149" : "#58a6ff"; const marker = document.createElement("div"); marker.style.cssText = `position:absolute;top:50%;transform:translate(-50%,-50%);height:18px;min-width:24px;padding:0 4px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:white;cursor:pointer;left:${pos}%;background:${color};border:2px solid #0d1117;z-index:10;`; marker.textContent = `${g.score_a}:${g.score_b}`; bar.appendChild(marker); });
 }
 
 async function loadShots() { if (!currentGameid) return; allShots = await sb(`shots?gameid=eq.${currentGameid}`) || []; buildPlayerFilter(); renderRink(); }
@@ -489,12 +433,13 @@ function renderRink() {
 }
 
 function buildPlayerFilter() { const select = document.getElementById("player-filter"); if(!select) return; while (select.options.length > 1) select.remove(1); if (!allShots) return; const shooters = {}; allShots.forEach(s => { if (!s.jn || s.jn === "0") return; const key = `${s.team_ab}_${cleanNum(s.jn)}`; if (!shooters[key]) shooters[key] = { ab: s.team_ab, jn: cleanNum(s.jn), name: roster[key]?.name || `№${s.jn}`, goals: 0 }; if (s.shot_type === 1) shooters[key].goals++; }); Object.values(shooters).sort((a, b) => a.ab.localeCompare(b.ab) || Number(a.jn) - Number(b.jn)).forEach(sh => { const opt = document.createElement("option"); opt.value = sh.jn + "_" + sh.ab; opt.textContent = `${sh.ab === "A" ? "🔴" : "🔵"} №${sh.jn} ${sh.name}${sh.goals > 0 ? ` ⚽${sh.goals}` : ""}`; select.appendChild(opt); }); }
-function filterPlayer(val) { if (val === "all") { currentPlayerFilter = 'all'; currentShotFilter = 'all'; document.querySelectorAll(".map-controls button").forEach(b => b.classList.remove("active")); const btn = document.getElementById("btn-all"); if(btn) btn.classList.add("active"); } else { const parts = val.split("_"); currentPlayerFilter = parts[0]; currentShotFilter = parts[1]; document.querySelectorAll(".map-controls button").forEach(b => b.classList.remove("active")); if (parts[1] === 'A') document.getElementById("btn-home").classList.add("active"); if (parts[1] === 'B') document.getElementById("btn-visitor").classList.add("active"); } renderRink(); }
-function filterShots(team) { currentShotFilter = team; currentPlayerFilter = 'all'; const sel = document.getElementById("player-filter"); if(sel) sel.value = "all"; document.querySelectorAll(".map-controls button").forEach(b => b.classList.remove("active")); if (team === 'all') document.getElementById("btn-all").classList.add("active"); if (team === 'A') document.getElementById("btn-home").classList.add("active"); if (team === 'B') document.getElementById("btn-visitor").classList.add("active"); renderRink(); }
+function filterPlayer(val) { if (val === "all") { currentPlayerFilter = 'all'; currentShotFilter = 'all'; document.querySelectorAll(".map-controls button").forEach(b => b.classList.remove("active")); document.getElementById("btn-all").classList.add("active"); } else { const parts = val.split("_"); currentPlayerFilter = parts[0]; currentShotFilter = parts[1]; document.querySelectorAll(".map-controls button").forEach(b => b.classList.remove("active")); if (parts[1] === 'A') document.getElementById("btn-home").classList.add("active"); if (parts[1] === 'B') document.getElementById("btn-visitor").classList.add("active"); } renderRink(); }
+function filterShots(team) { currentShotFilter = team; currentPlayerFilter = 'all'; document.getElementById("player-filter").value = "all"; document.querySelectorAll(".map-controls button").forEach(b => b.classList.remove("active")); if (team === 'all') document.getElementById("btn-all").classList.add("active"); if (team === 'A') document.getElementById("btn-home").classList.add("active"); if (team === 'B') document.getElementById("btn-visitor").classList.add("active"); renderRink(); }
 
 function switchTab(tab) {
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
   document.querySelectorAll(".feed-container, .map-container, .stats-container, .lineups-container").forEach(c => c.classList.remove("active"));
+  
   if (tab === 'feed') { document.querySelectorAll(".tab")[0].classList.add("active"); document.getElementById("feed-container").classList.add("active"); }
   else if (tab === 'lineups') { document.querySelectorAll(".tab")[1].classList.add("active"); document.getElementById("lineups-container").classList.add("active"); renderLineups(); }
   else if (tab === 'map') { document.querySelectorAll(".tab")[2].classList.add("active"); document.getElementById("map-container").classList.add("active"); renderRink(); }
@@ -504,55 +449,78 @@ function switchTab(tab) {
 async function renderLineups() {
   const container = document.getElementById("lineups-container");
   container.innerHTML = '<div class="loading">Загрузка...</div>';
+  
   const statsData = await sb(`players_stats?gameid=eq.${currentGameid}`);
-  if (!statsData || statsData.length === 0) { container.innerHTML = '<div class="loading">Составы еще не загружены.</div>'; return; }
-  const identity = await sb(`identity?select=*&or=(team.eq.${encodeURIComponent(homeTeam)},team.eq.${encodeURIComponent(visitorTeam)})`) || [];
+  
+  if (!statsData || statsData.length === 0) {
+      container.innerHTML = '<div class="loading">Составы еще не загружены.</div>';
+      return;
+  }
+
+  const data = await sb(`identity?select=*&or=(team.eq.${encodeURIComponent(homeTeam)},team.eq.${encodeURIComponent(visitorTeam)})`);
+  
+  const activeKeys = new Set(statsData.map(s => `${s.team}_${s.num}`));
+  let filteredData = [];
+  
+  if (data) {
+      filteredData = data.filter(p => activeKeys.has(`${p.team}_${p.num}`));
+  }
+  
+  if (filteredData.length === 0) {
+      filteredData = statsData.map(s => ({
+          team: s.team,
+          player: s.player,
+          num: s.num,
+          position: s.position,
+          line: s.line || null
+      }));
+  }
+
   let html = `<div class="lineup-header"><span class="home">${homeTeam}</span><span class="away">${visitorTeam}</span></div><div class="lineup-grid">`;
+  
   [homeTeam, visitorTeam].forEach(team => {
     const ab = team === homeTeam ? "A" : "B"; 
-    const activeStats = statsData.filter(s => s.team === team);
-    const teamPlayers = [];
-    const processed = new Set(); 
-    activeStats.forEach(s => {
-        const numStr = String(s.num || "").trim();
-        if (!numStr) return;
-        const key = `${s.player}_${numStr}`;
-        if (processed.has(key)) return; 
-        processed.add(key);
-        const idInfo = identity.find(i => i.team === team && String(i.num).trim() === numStr && i.player === s.player);
-        teamPlayers.push({ name: s.player, num: numStr, pos: idInfo ? idInfo.position : s.position, line: idInfo && idInfo.line ? Number(idInfo.line) : null, photo: idInfo ? idInfo.photo : null });
+    const players = filteredData.filter(p => p.team === team);
+    const lines = {};
+    
+    players.forEach(p => { 
+      let key = p.position === 'Вр' ? 'Вратари' : (p.line ? `${p.line}-е звено` : 'Резерв'); 
+      if (!lines[key]) lines[key] = []; 
+      lines[key].push(p); 
     });
-    const lines = { 'Вратари': [], '1-е звено': [], '2-е звено': [], '3-е звено': [], '4-е звено': [], 'Резерв': [] };
-    teamPlayers.forEach(p => {
-        if (p.pos === 'Вр') lines['Вратари'].push(p);
-        else if (p.line && p.line >= 1 && p.line <= 4) lines[`${p.line}-е звено`].push(p);
-        else lines['Резерв'].push(p);
-    });
-    Object.keys(lines).forEach(key => {
-        if (key === 'Вратари' || key === 'Резерв') return;
-        let defs = lines[key].filter(p => p.pos === 'Защ');
-        let fwds = lines[key].filter(p => p.pos === 'Нап');
-        lines[key] = [...defs.slice(0, 2), ...fwds.slice(0, 3)];
-    });
+
     html += `<div class="lineup-col">`;
-    Object.keys(lines).forEach(key => {
-        if (lines[key].length === 0) return;
-        html += `<div class="line-box"><div class="line-title">${key}</div><div class="line-players">`;
-        lines[key].sort((a, b) => { if (a.pos === 'Защ' && b.pos !== 'Защ') return -1; if (b.pos === 'Защ' && a.pos !== 'Защ') return 1; return Number(a.num) - Number(b.num); }).forEach(p => {
-            const stats = roster[`${ab}_${p.num}`] || { g: 0, a: 0 };
-            const pts = (Number(stats.g) || 0) + (Number(stats.a) || 0);
-            let statsHtml = pts > 0 ? `<span class="stats" style="font-size: 12px; color: var(--goal-border); font-weight: 900; margin-right: 10px;">${stats.g}Г ${stats.a}П</span>` : '';
-            html += `<div class="line-player" onclick="showPlayerModal('${ab}', '${p.num}')" style="cursor:pointer; transition: background 0.2s;" onmouseover="this.style.background='#21262d'" onmouseout="this.style.background='transparent'">
-              <span class="num">${p.num}</span>
-              <span class="name player-link">${p.name}</span>
-              ${statsHtml}
-              <span class="pos">${p.pos}</span>
-            </div>`;
-        });
-        html += `</div></div>`;
+    
+    Object.keys(lines).sort((a, b) => { 
+      if (a === 'Вратари') return -1; if (b === 'Вратари') return 1; 
+      if (a === 'Резерв') return 1; if (b === 'Резерв') return -1; 
+      return parseInt(a) - parseInt(b); 
+    }).forEach(key => {
+      
+      html += `<div class="line-box"><div class="line-title">${key}</div><div class="line-players">`;
+      
+      lines[key].sort((a, b) => {
+          if (a.position === 'Защ' && b.position !== 'Защ') return -1;
+          if (b.position === 'Защ' && a.position !== 'Защ') return 1;
+          return Number(a.num) - Number(b.num);
+      }).forEach(p => {
+        const numStr = cleanNum(p.num);
+        const stats = roster[`${ab}_${numStr}`] || { g: 0, a: 0 };
+        const pts = (Number(stats.g) || 0) + (Number(stats.a) || 0);
+        let statsHtml = pts > 0 ? `<span class="stats" style="font-size: 12px; color: var(--goal-border); font-weight: 900; margin-right: 10px;">${stats.g}Г ${stats.a}П</span>` : '';
+
+        html += `<div class="line-player" onclick="showPlayerModal('${ab}', '${numStr}')" style="cursor:pointer; transition: background 0.2s;" onmouseover="this.style.background='#21262d'" onmouseout="this.style.background='transparent'">
+          <span class="num">${p.num || '-'}</span>
+          <span class="name player-link">${p.player}</span>
+          ${statsHtml}
+          <span class="pos">${p.position}</span>
+        </div>`;
+      });
+      html += `</div></div>`;
     });
     html += `</div>`;
   });
+  
   html += `</div>`;
   container.innerHTML = html;
 }
@@ -569,10 +537,20 @@ function renderTeamStats() {
   const container = document.getElementById("stats-content"); 
   if (!container) return;
   if (!teamStatsData) teamStatsData = []; 
+
   let home = teamStatsData.find(s => s.team === homeTeam && s.period === currentStatsPeriod); 
   let away = teamStatsData.find(s => s.team === visitorTeam && s.period === currentStatsPeriod); 
-  if (!home || !away) { home = teamStatsData.find(s => s.team === homeTeam && s.period === 0); away = teamStatsData.find(s => s.team === visitorTeam && s.period === 0); }
-  if (!home || !away) { home = { g: currentMatchData?.home_goals || 0, sog: 0, hits: 0, bls: 0, tka: 0, p_intc: 0, gva: 0, pim: 0, ppgf: 0, pp_pct: 0, shgf: 0, pk_pct: 0 }; away = { g: currentMatchData?.visitor_goals || 0, sog: 0, hits: 0, bls: 0, tka: 0, p_intc: 0, gva: 0, pim: 0, ppgf: 0, pp_pct: 0, shgf: 0, pk_pct: 0 }; } 
+  
+  if (!home || !away) { 
+    home = teamStatsData.find(s => s.team === homeTeam && s.period === 0); 
+    away = teamStatsData.find(s => s.team === visitorTeam && s.period === 0); 
+  }
+  
+  if (!home || !away) { 
+    home = { g: currentMatchData?.home_goals || 0, sog: 0, hits: 0, bls: 0, tka: 0, p_intc: 0, gva: 0, pim: 0, ppgf: 0, pp_pct: 0, shgf: 0, pk_pct: 0 };
+    away = { g: currentMatchData?.visitor_goals || 0, sog: 0, hits: 0, bls: 0, tka: 0, p_intc: 0, gva: 0, pim: 0, ppgf: 0, pp_pct: 0, shgf: 0, pk_pct: 0 };
+  } 
+  
   container.innerHTML = `<div class="stats-header"><span class="h">${homeTeam}</span><span class="a">${visitorTeam}</span></div>${renderStatRow("Голы", home.g || 0, away.g || 0)}${renderStatRow("Броски", home.sog || 0, away.sog || 0)}${renderStatRow("Силовые", home.hits || 0, away.hits || 0)}${renderStatRow("Блоки", home.bls || 0, away.bls || 0)}${renderStatRow("Отборы", home.tka || 0, away.tka || 0)}${renderStatRow("Перехваты", home.p_intc || 0, away.p_intc || 0)}${renderStatRow("Потери", home.gva || 0, away.gva || 0)}${renderStatRow("Штраф", home.pim || 0, away.pim || 0, " мин")}<div class="stat-divider">Спецбригады</div>${renderStatRow("Голы в бол.", home.ppgf || 0, away.ppgf || 0)}${renderPercentRow("Реализация бол.", home.pp_pct, away.pp_pct)}${renderStatRow("Голы в мен.", home.shgf || 0, away.shgf || 0)}${renderPercentRow("Нейтрализация мен.", home.pk_pct, away.pk_pct)}`; 
 }
 
@@ -616,39 +594,73 @@ async function tick() {
           if (document.getElementById("stats-container").classList.contains("active")) renderTeamStats();
       }
     }
-    lastUpdateTime = Date.now(); const ut = document.getElementById("update-timer"); if(ut) ut.textContent = "Обновлено только что";
+    lastUpdateTime = Date.now(); document.getElementById("update-timer").textContent = "Обновлено только что";
   } catch (e) { console.error("Ошибка в tick:", e); } finally { clearTimeout(safety); isUpdating = false; }
 }
 
 async function loadNews() {
   try {
     const TEAM_FULL = { "АВТ": "Автомобилист", "АКБ": "Ак Барс", "АДМ": "Адмирал", "АМР": "Амур", "АВГ": "Авангард", "БАР": "Барыс", "ДИН": "Динамо М", "ДМН": "Динамо Мн", "ЛАД": "Лада", "ЛОК": "Локомотив", "ММГ": "Металлург Мг", "НХК": "Нефтехимик", "САЛ": "Салават Юлаев", "СЕВ": "Северсталь", "СИБ": "Сибирь", "СКА": "СКА", "СПА": "Спартак", "ТОР": "Торпедо НН", "ТРК": "Трактор", "СОЧ": "ХК Сочи", "ЦСК": "ЦСКА", "ДРК": "Шанхай Дрэгонс", "ШДР": "Шанхай Дрэгонс" };
+
     const hFull = TEAM_FULL[homeTeam] || homeTeam;
     const vFull = TEAM_FULL[visitorTeam] || visitorTeam;
+
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    
     const teamQuery = `news?select=text,type,link,team&is_active=eq.true&or=(team.eq.${encodeURIComponent(hFull)},team.eq.${encodeURIComponent(vFull)})&pub_date=gte.${sevenDaysAgo}&order=pub_date.desc&limit=20`;
     let teamNews = await sb(teamQuery) || [];
+
     let generalNews = [];
-    if (teamNews.length < 3) { const generalQuery = `news?select=text,type,link,team&is_active=eq.true&team=is.null&pub_date=gte.${twoDaysAgo}&order=pub_date.desc&limit=10`; generalNews = await sb(generalQuery) || []; }
+    if (teamNews.length < 3) {
+      const generalQuery = `news?select=text,type,link,team&is_active=eq.true&team=is.null&pub_date=gte.${twoDaysAgo}&order=pub_date.desc&limit=10`;
+      generalNews = await sb(generalQuery) || [];
+    }
+
     const allNews = [...teamNews, ...generalNews];
-    const content = document.getElementById("ticker-content"); if (!content) return;
-    if (allNews.length === 0) { content.innerHTML = `<span class="ticker-item">Свежих новостей пока нет</span>`; return; }
+
+    const content = document.getElementById("ticker-content"); 
+    if (!content) return;
+    
+    if (allNews.length === 0) { 
+      content.innerHTML = `<span class="ticker-item">Свежих новостей пока нет</span>`; 
+      return; 
+    }
+
     let html = allNews.map(n => {
       let prefix = ""; let color = "#e6edf3"; 
+      
       if (n.type === 'injury') { prefix = `🏥 [${n.team || 'Лазарет'}] `; color = "#f85149"; }
       else if (n.type === 'interview') { prefix = `🎙️ [Интервью] `; color = "#58a6ff"; }
       else if (n.team) { prefix = `🏒 [${n.team}] `; color = "#3fb950"; }
       else { prefix = `🏒 [КХЛ] `; } 
+
       return `<a class="ticker-item" href="${n.link || '#'}" target="_blank" style="color:${color}">${prefix}${n.text.replace(/</g, "&lt;")}</a>`;
     }).join("");
-    const topPlayers = Object.values(roster).filter(p => p.team === hFull || p.team === vFull).sort((a, b) => ((b.g||0) + (b.a||0)) - ((a.g||0) + (a.a||0))).slice(0, 3);
-    if (topPlayers.length > 0) { topPlayers.forEach(p => { if ((p.g || 0) + (p.a || 0) > 0) { html += `<span class="ticker-item" style="color:#f0c040;">⭐ Лидеры: ${p.fullName} (${p.team}) — ${p.g}Г ${p.a}П</span>`; } }); }
+
+    const topPlayers = Object.values(roster)
+        .filter(p => p.team === hFull || p.team === vFull)
+        .sort((a, b) => ((b.g||0) + (b.a||0)) - ((a.g||0) + (a.a||0)))
+        .slice(0, 3);
+
+    if (topPlayers.length > 0) {
+       topPlayers.forEach(p => {
+           if ((p.g || 0) + (p.a || 0) > 0) {
+               html += `<span class="ticker-item" style="color:#f0c040;">⭐ Лидеры: ${p.fullName} (${p.team}) — ${p.g}Г ${p.a}П</span>`;
+           }
+       });
+    }
+
     content.innerHTML = html;
   } catch (e) { console.error("Ошибка новостей:", e); }
 }
 
 // --- ЛОГИКА ЧАТА ---
+function toggleChat() {
+  const win = document.getElementById("chat-window");
+  if (win) win.classList.toggle("open");
+}
+
 async function loadChat() {
   if (!currentGameid) return;
   try {
@@ -670,9 +682,7 @@ async function loadChat() {
         const isOwn = m.username === getMyChatName();
         const time = new Date(m.created_at).toLocaleTimeString("ru-RU", { hour: '2-digit', minute: '2-digit' });
         const safeText = m.message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        // Кнопка удаления (показываем всем, но работает только у админа)
         const delBtn = `<span onclick="deleteChatMsg(${m.id})" style="cursor:pointer; color:#f85149; font-size:10px; margin-left:5px;" title="Удалить">❌</span>`;
-        
         return `<div class="chat-msg ${isOwn ? 'own' : ''}">
           <div class="msg-author">${m.username || 'Болельщик'} ${delBtn}</div>
           <div class="msg-bubble">${safeText}</div>
@@ -715,7 +725,6 @@ async function sendChatMessage() {
     });
 
     if (!r.ok) throw new Error("Ошибка отправки");
-    
     input.value = "";
     await loadChat();
   } catch (e) {
@@ -729,6 +738,28 @@ function getMyChatName() {
   return localStorage.getItem("chatName");
 }
 
+function changeNick() {
+  const newName = prompt("Введите ваш новый ник (до 20 символов):", getMyChatName() || "Болельщик");
+  if (newName && newName.trim().length > 0) {
+    localStorage.setItem("chatName", newName.trim().substring(0, 20));
+    alert("Ник изменен на: " + newName.trim());
+    loadChat();
+  }
+}
+
+async function deleteChatMsg(id) {
+  if (!confirm("Удалить это сообщение?")) return;
+  try {
+    const r = await fetch(`${SUPABASE}/rest/v1/chat_messages?id=eq.${id}`, {
+      method: "DELETE",
+      headers: { "apikey": KEY, "Authorization": "Bearer " + KEY }
+    });
+    if (!r.ok) throw new Error("Нет прав на удаление");
+    chatLastId = 0;
+    loadChat();
+  } catch (e) { alert("Ошибка удаления: " + e.message); }
+}
+
 function initChat() {
   const input = document.getElementById("chat-input");
   if (input) {
@@ -738,43 +769,6 @@ function initChat() {
   }
   loadChat();
   setInterval(loadChat, 5000);
-}
-// Смена ника
-function changeNick() {
-  const newName = prompt("Введите ваш новый ник (до 20 символов):", getMyChatName() || "Болельщик");
-  if (newName && newName.trim().length > 0) {
-    localStorage.setItem("chatName", newName.trim().substring(0, 20));
-    alert("Ник изменен на: " + newName.trim());
-    loadChat(); // Перезагружаем чат, чтобы увидеть свои сообщения под новым ником
-  }
-}
-
-// Удаление сообщения (работает только для админа через service_role, 
-// но с anon-ключом выдаст ошибку, если мы не добавили политику)
-async function deleteChatMsg(id) {
-  if (!confirm("Удалить это сообщение?")) return;
-  
-  try {
-    const r = await fetch(`${SUPABASE}/rest/v1/chat_messages?id=eq.${id}`, {
-      method: "DELETE",
-      headers: {
-        "apikey": KEY,
-        "Authorization": "Bearer " + KEY
-      }
-    });
-
-    if (!r.ok) {
-      // Если anon-ключ не может удалять (а он не может), выбрасываем ошибку
-      const err = await r.json();
-      throw new Error(err.message || "Нет прав на удаление");
-    }
-    
-    // Если удалили, обновляем чат
-    chatLastId = 0; // Сбрасываем, чтобы перерисовать
-    loadChat();
-  } catch (e) {
-    alert("Ошибка удаления: " + e.message + "\n(Удалять сообщения может только админ через service_role)");
-  }
 }
 
 async function initApp() { 
