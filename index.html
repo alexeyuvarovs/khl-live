@@ -76,6 +76,16 @@
   </div>
   <div id="tab-matches"><div id="matches-list"><div class="loading">Загрузка...</div></div></div>
   
+   <!-- Блок голосования -->
+    <div class="vote-block" id="vote-block" style="display:none; margin-top: 20px; background: var(--card); padding: 15px; border-radius: 10px; border: 1px solid var(--border);">
+      <h3 style="text-align: center; margin-bottom: 15px; font-size: 16px; text-transform: uppercase;">Кто победит в матче?</h3>
+      <div id="vote-options" style="display: flex; flex-direction: column; gap: 10px;">
+        <!-- Кнопки будут добавлены через JS -->
+      </div>
+      <div id="vote-result" style="display: none; margin-top: 15px;"></div>
+    </div>
+  </div>
+  
   <div id="tab-tables" class="table-section">
     <div class="conf-title" style="color:#f85149;">Западная конференция</div>
     <table class="standings" id="table-west"><thead></thead><tbody></tbody></table>
@@ -124,6 +134,103 @@ function switchMainTab(tab) {
     loadStandings();
   }
 }
+// --- ЛОГИКА ГОЛОСОВАНИЯ ---
+let currentVoteGameid = null;
+
+async function initVote(gid, home, visitor) {
+  currentVoteGameid = gid;
+  const block = document.getElementById("vote-block");
+  const options = document.getElementById("vote-options");
+  const result = document.getElementById("vote-result");
+  
+  block.style.display = "block";
+  options.style.display = "flex";
+  result.style.display = "none";
+
+  // Проверяем, голосовал ли уже этот браузер
+  const voted = localStorage.getItem(`voted_${gid}`);
+  
+  options.innerHTML = `
+    <button onclick="castVote('home', '${home}')" class="vote-btn" id="vote-home" style="padding:12px; border-radius:8px; background:#21262d; color:#fff; border:1px solid var(--border); cursor:pointer; font-weight:700; display:flex; justify-content:space-between;">${home} <span id="pct-home">0%</span></button>
+    <button onclick="castVote('draw', '${home} — ${visitor}')" class="vote-btn" id="vote-draw" style="padding:12px; border-radius:8px; background:#21262d; color:#fff; border:1px solid var(--border); cursor:pointer; font-weight:700; display:flex; justify-content:space-between;">Ничья <span id="pct-draw">0%</span></button>
+    <button onclick="castVote('away', '${visitor}')" class="vote-btn" id="vote-away" style="padding:12px; border-radius:8px; background:#21262d; color:#fff; border:1px solid var(--border); cursor:pointer; font-weight:700; display:flex; justify-content:space-between;">${visitor} <span id="pct-away">0%</span></button>
+  `;
+
+  if (voted) {
+    showVoteResults(gid);
+  } else {
+    // Показываем проценты (но не даем голосовать дважды)
+    showVoteResults(gid, false);
+  }
+}
+
+async function castVote(type, label) {
+  if (!currentVoteGameid) return;
+  if (localStorage.getItem(`voted_${currentVoteGameid}`)) {
+    alert("Вы уже проголосовали!");
+    return;
+  }
+
+  try {
+    const r = await fetch(`${SUPABASE}/rest/v1/match_votes`, {
+      method: "POST",
+      headers: {
+        "apikey": KEY,
+        "Authorization": "Bearer " + KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        gameid: Number(currentVoteGameid),
+        vote_type: type
+      })
+    });
+
+    if (!r.ok) throw new Error("Ошибка голосования");
+    
+    localStorage.setItem(`voted_${currentVoteGameid}`, "true");
+    showVoteResults(currentVoteGameid);
+  } catch (e) {
+    alert("Не удалось проголосовать: " + e.message);
+  }
+}
+
+async function showVoteResults(gid, canVote = true) {
+  const options = document.getElementById("vote-options");
+  const result = document.getElementById("vote-result");
+  if (!gid) return;
+
+  const votes = await sb(`match_votes?gameid=eq.${gid}&select=vote_type`);
+  if (!votes) return;
+
+  let total = votes.length;
+  let h = 0, d = 0, a = 0;
+  votes.forEach(v => {
+    if (v.vote_type === 'home') h++;
+    else if (v.vote_type === 'draw') d++;
+    else if (v.vote_type === 'away') a++;
+  });
+
+  const pH = total > 0 ? Math.round((h / total) * 100) : 0;
+  const pD = total > 0 ? Math.round((d / total) * 100) : 0;
+  const pA = total > 0 ? Math.round((a / total) * 100) : 0;
+
+  // Обновляем текст на кнопках
+  document.getElementById("pct-home").textContent = `${pH}% (${h})`;
+  document.getElementById("pct-draw").textContent = `${pD}% (${d})`;
+  document.getElementById("pct-away").textContent = `${pA}% (${a})`;
+
+  if (!canVote) return;
+
+  // Если уже голосовал, скрываем возможность нажать еще раз
+  if (localStorage.getItem(`voted_${gid}`)) {
+    options.querySelectorAll(".vote-btn").forEach(btn => {
+      btn.disabled = true;
+      btn.style.cursor = "default";
+      btn.style.opacity = "0.7";
+    });
+  }
+}
 
 async function loadMatches() {
   const TEAM_FULL = { "АВТ": "Автомобилист", "АКБ": "Ак Барс", "АДМ": "Адмирал", "АМР": "Амур", "АВГ": "Авангард", "БАР": "Барыс", "ДИН": "Динамо М", "ДМН": "Динамо Мн", "ЛАД": "Лада", "ЛОК": "Локомотив", "ММГ": "Металлург Мг", "НХК": "Нефтехимик", "САЛ": "Салават Юлаев", "СЕВ": "Северсталь", "СИБ": "Сибирь", "СКА": "СКА", "СПА": "Спартак", "ТОР": "Торпедо НН", "ТРК": "Трактор", "СОЧ": "ХК Сочи", "ЦСК": "ЦСКА", "ДРК": "Шанхай Дрэгонс", "ШДР": "Шанхай Дрэгонс" };
@@ -154,6 +261,9 @@ async function loadMatches() {
       
       return `<a href="live10.html?gameid=${m.gameid}" class="match-card ${m.status === 'live' ? 'is-live' : ''}"><div class="mc-team">${getLogoHtml(homeName)}<span class="mc-name">${homeName}</span></div><div class="mc-center"><div class="mc-score">${score}</div><div class="mc-status ${statusClass}">${statusText}</div></div><div class="mc-team away"><span class="mc-name">${visName}</span>${getLogoHtml(visName)}</div><div class="mc-date">${formatDate(m.date)}</div></a>`;
     }).join("");
+        // Запускаем голосование для активного матча
+    initVote(activeMatch.gameid, TEAM_FULL[activeMatch.home] || activeMatch.home, TEAM_FULL[activeMatch.visitor] || activeMatch.visitor);
+    
   } catch (e) { list.innerHTML = `<div class="error-msg">Ошибка: ${e.message}</div>`; }
 }
 
