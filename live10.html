@@ -10,7 +10,6 @@
   :root { 
     --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3; --muted: #8b949e; 
     --home: #f85149; --visitor: #58a6ff; --goal-bg: rgba(35,134,54,0.15); --goal-border: #238636;
-    --win: #238636; --draw: #d29922; --lose: #f85149;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Roboto Condensed', sans-serif; background: var(--bg); color: var(--text); padding-bottom: 60px; display: flex; flex-direction: column; min-height: 100vh; }
@@ -132,23 +131,21 @@
   .pm-cell-title { color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 700; }
   .pm-cell-val { font-size: 20px; font-weight: 900; color: #fff; margin-top: 2px; }
 
-  /* ЧАТ */
-  .chat-container { margin-top: 20px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; height: 400px; }
+  /* ЧАТ (перенесен наверх) */
+  .chat-container { max-width: 800px; margin: 0 auto 16px; padding: 0 12px; display: flex; flex-direction: column; height: 300px; }
+  .chat-inner { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; height: 100%; }
   .chat-header { display: flex; justify-content: space-between; padding: 10px 15px; background: #21262d; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
-  .chat-online { color: var(--muted); font-size: 12px; }
   .chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-  .chat-loading { text-align: center; color: var(--muted); font-size: 13px; margin-top: 20px; }
   .chat-msg { display: flex; flex-direction: column; max-width: 85%; }
   .chat-msg.own { align-self: flex-end; align-items: flex-end; }
   .chat-msg .msg-author { font-size: 11px; color: var(--muted); margin-bottom: 2px; font-weight: 700; }
-  .chat-msg .msg-bubble { background: #21262d; padding: 8px 12px; border-radius: 12px; border-bottom-left-radius: 2px; font-size: 14px; word-wrap: break-word; }
-  .chat-msg.own .msg-bubble { background: #1f6feb; color: #fff; border-bottom-left-radius: 12px; border-bottom-right-radius: 2px; }
+  .chat-msg .msg-bubble { background: #21262d; padding: 6px 10px; border-radius: 10px; border-bottom-left-radius: 2px; font-size: 13px; word-wrap: break-word; }
+  .chat-msg.own .msg-bubble { background: #1f6feb; color: #fff; border-bottom-left-radius: 10px; border-bottom-right-radius: 2px; }
   .chat-msg .msg-time { font-size: 10px; color: #484f58; margin-top: 2px; }
-  .chat-input-wrap { display: flex; padding: 10px; background: #21262d; border-top: 1px solid var(--border); gap: 8px; }
-  .chat-input-wrap input { flex-grow: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; color: var(--text); font-family: inherit; font-size: 14px; }
+  .chat-input-wrap { display: flex; padding: 8px; background: #21262d; border-top: 1px solid var(--border); gap: 6px; }
+  .chat-input-wrap input { flex-grow: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: var(--text); font-family: inherit; font-size: 13px; }
   .chat-input-wrap input:focus { outline: none; border-color: var(--visitor); }
-  .chat-input-wrap button { background: var(--visitor); border: none; color: #fff; border-radius: 6px; padding: 0 15px; cursor: pointer; font-size: 18px; transition: background 0.2s; }
-  .chat-input-wrap button:hover { background: #409eff; }
+  .chat-input-wrap button { background: var(--visitor); border: none; color: #fff; border-radius: 6px; padding: 0 12px; cursor: pointer; font-size: 16px; }
 
   /* Бегущая строка */
   .ticker-wrap { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #000; border-top: 1px solid #30363d; z-index: 99999; display: flex; overflow: hidden; align-items: center; }
@@ -168,6 +165,26 @@
   <div class="team-side away-side"><div class="sog-box"><span>БР</span><b id="away-sog">-</b></div><img id="visitor-logo" class="tiny-logo" style="display:none;"><span class="team-code" id="visitor-code">...</span></div>
 </div>
 
+<!-- ЧАТ (ТЕПЕРЬ СВЕРХУ) -->
+<div class="chat-container" id="chat-container">
+  <div class="chat-inner">
+    <div class="chat-header">
+      <span>💬 Чат болельщиков</span>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <span class="chat-online" style="color:var(--muted); font-size:11px;">Live</span>
+        <button onclick="changeNick()" style="background:none; border:none; color:#58a6ff; cursor:pointer; font-size:11px; font-weight:700; padding:0;">Сменить ник</button>
+      </div>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-loading">Загрузка сообщений...</div>
+    </div>
+    <div class="chat-input-wrap">
+      <input type="text" id="chat-input" placeholder="Напишите что-нибудь..." maxlength="300" autocomplete="off">
+      <button id="chat-send" onclick="sendChatMessage()">➤</button>
+    </div>
+  </div>
+</div>
+
 <div id="period-breakdown" class="period-breakdown">
   <div class="pb-wrapper">
     <div class="pb-item" id="pb-item-1"><div class="pb-label">1-й период</div><div class="pb-score" id="pb-p1">0 : 0</div></div>
@@ -185,24 +202,7 @@
 
 <div class="feed-container active" id="feed-container">
   <div id="feed" class="event-list"><div class="loading">Загрузка...</div></div>
-  
-    <!-- Блок чата -->
-  <div class="chat-container" id="chat-container">
-    <div class="chat-header">
-      <span>💬 Чат болельщиков</span>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <span class="chat-online" id="chat-online">Live</span>
-        <button onclick="changeNick()" style="background:none; border:none; color:#58a6ff; cursor:pointer; font-size:12px; font-weight:700; padding:0;">Сменить ник</button>
-      </div>
-    </div>
-    <div class="chat-messages" id="chat-messages">
-      <div class="chat-loading">Загрузка сообщений...</div>
-    </div>
-    <div class="chat-input-wrap">
-      <input type="text" id="chat-input" placeholder="Напишите что-нибудь..." maxlength="300" autocomplete="off">
-      <button id="chat-send" onclick="sendChatMessage()">➤</button>
-    </div>
-  </div>
+</div>
 
 <div class="lineups-container" id="lineups-container"><div class="loading">Загрузка составов...</div></div>
 
@@ -305,8 +305,8 @@ async function loadGoals() {
     });
   }
   Object.values(goalsData).forEach(g => { if (g.score_a !== undefined) scoreA = g.score_a; if (g.score_b !== undefined) scoreB = g.score_b; });
-  document.getElementById("score-home").textContent = scoreA;
-  document.getElementById("score-away").textContent = scoreB;
+  const sh = document.getElementById("score-home"); if(sh) sh.textContent = scoreA;
+  const sa = document.getElementById("score-away"); if(sa) sa.textContent = scoreB;
 }
 
 async function loadPenalties() { if (!currentGameid) return; const pens = await sb(`penalties?gameid=eq.${currentGameid}&select=period,time,minutes,reason,team,player`); penaltiesData = []; if (pens) penaltiesData = pens; }
@@ -670,9 +670,7 @@ async function loadChat() {
         const isOwn = m.username === getMyChatName();
         const time = new Date(m.created_at).toLocaleTimeString("ru-RU", { hour: '2-digit', minute: '2-digit' });
         const safeText = m.message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        // Кнопка удаления (показываем всем, но работает только у админа)
         const delBtn = `<span onclick="deleteChatMsg(${m.id})" style="cursor:pointer; color:#f85149; font-size:10px; margin-left:5px;" title="Удалить">❌</span>`;
-        
         return `<div class="chat-msg ${isOwn ? 'own' : ''}">
           <div class="msg-author">${m.username || 'Болельщик'} ${delBtn}</div>
           <div class="msg-bubble">${safeText}</div>
@@ -715,7 +713,6 @@ async function sendChatMessage() {
     });
 
     if (!r.ok) throw new Error("Ошибка отправки");
-    
     input.value = "";
     await loadChat();
   } catch (e) {
@@ -729,6 +726,28 @@ function getMyChatName() {
   return localStorage.getItem("chatName");
 }
 
+function changeNick() {
+  const newName = prompt("Введите ваш новый ник (до 20 символов):", getMyChatName() || "Болельщик");
+  if (newName && newName.trim().length > 0) {
+    localStorage.setItem("chatName", newName.trim().substring(0, 20));
+    alert("Ник изменен на: " + newName.trim());
+    loadChat();
+  }
+}
+
+async function deleteChatMsg(id) {
+  if (!confirm("Удалить это сообщение?")) return;
+  try {
+    const r = await fetch(`${SUPABASE}/rest/v1/chat_messages?id=eq.${id}`, {
+      method: "DELETE",
+      headers: { "apikey": KEY, "Authorization": "Bearer " + KEY }
+    });
+    if (!r.ok) throw new Error("Нет прав на удаление");
+    chatLastId = 0;
+    loadChat();
+  } catch (e) { alert("Ошибка удаления: " + e.message); }
+}
+
 function initChat() {
   const input = document.getElementById("chat-input");
   if (input) {
@@ -738,43 +757,6 @@ function initChat() {
   }
   loadChat();
   setInterval(loadChat, 5000);
-}
-// Смена ника
-function changeNick() {
-  const newName = prompt("Введите ваш новый ник (до 20 символов):", getMyChatName() || "Болельщик");
-  if (newName && newName.trim().length > 0) {
-    localStorage.setItem("chatName", newName.trim().substring(0, 20));
-    alert("Ник изменен на: " + newName.trim());
-    loadChat(); // Перезагружаем чат, чтобы увидеть свои сообщения под новым ником
-  }
-}
-
-// Удаление сообщения (работает только для админа через service_role, 
-// но с anon-ключом выдаст ошибку, если мы не добавили политику)
-async function deleteChatMsg(id) {
-  if (!confirm("Удалить это сообщение?")) return;
-  
-  try {
-    const r = await fetch(`${SUPABASE}/rest/v1/chat_messages?id=eq.${id}`, {
-      method: "DELETE",
-      headers: {
-        "apikey": KEY,
-        "Authorization": "Bearer " + KEY
-      }
-    });
-
-    if (!r.ok) {
-      // Если anon-ключ не может удалять (а он не может), выбрасываем ошибку
-      const err = await r.json();
-      throw new Error(err.message || "Нет прав на удаление");
-    }
-    
-    // Если удалили, обновляем чат
-    chatLastId = 0; // Сбрасываем, чтобы перерисовать
-    loadChat();
-  } catch (e) {
-    alert("Ошибка удаления: " + e.message + "\n(Удалять сообщения может только админ через service_role)");
-  }
 }
 
 async function initApp() { 

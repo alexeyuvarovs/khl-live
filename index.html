@@ -54,6 +54,18 @@
   
   tr.playoff-line td { border-bottom: 2px solid #484f58; }
 
+  /* Крупное голосование */
+  .vote-block { margin-top: 20px; background: var(--card); padding: 20px; border-radius: 10px; border: 1px solid var(--border); }
+  .vote-title { text-align: center; font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 20px; color: #fff; }
+  .vote-option { display: flex; flex-direction: column; margin-bottom: 12px; cursor: pointer; transition: transform 0.1s; }
+  .vote-option:hover { transform: scale(1.01); }
+  .vote-option-top { display: flex; justify-content: space-between; font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .vote-bar { height: 8px; border-radius: 4px; background: #21262d; overflow: hidden; display: flex; }
+  .vote-bar-fill { height: 100%; transition: width 0.5s ease-out; }
+  .vote-bar-fill.home { background: var(--home); }
+  .vote-bar-fill.draw { background: var(--muted); }
+  .vote-bar-fill.away { background: var(--visitor); }
+
   .ticker-wrap { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #000; border-top: 1px solid #30363d; z-index: 99999; display: flex; overflow: hidden; align-items: center; }
   .ticker-title { background: #f85149; color: #fff; font-weight: 900; padding: 0 15px; height: 100%; display: flex; align-items: center; z-index: 10; white-space: nowrap; }
   .ticker { display: flex; align-items: center; white-space: nowrap; animation: ticker 180s linear infinite; padding-left: 100vw; }
@@ -74,15 +86,14 @@
     <div class="tab active" onclick="switchMainTab('matches')">Матчи</div>
     <div class="tab" onclick="switchMainTab('tables')">Таблицы</div>
   </div>
-  <div id="tab-matches"><div id="matches-list"><div class="loading">Загрузка...</div></div></div>
   
-   <!-- Блок голосования -->
-    <div class="vote-block" id="vote-block" style="display:none; margin-top: 20px; background: var(--card); padding: 15px; border-radius: 10px; border: 1px solid var(--border);">
-      <h3 style="text-align: center; margin-bottom: 15px; font-size: 16px; text-transform: uppercase;">Кто победит в матче?</h3>
-      <div id="vote-options" style="display: flex; flex-direction: column; gap: 10px;">
-        <!-- Кнопки будут добавлены через JS -->
-      </div>
-      <div id="vote-result" style="display: none; margin-top: 15px;"></div>
+  <div id="tab-matches">
+    <div id="matches-list"><div class="loading">Загрузка...</div></div>
+    
+    <!-- Крупное голосование -->
+    <div class="vote-block" id="vote-block" style="display:none;">
+      <div class="vote-title" id="vote-title">Кто победит в матче?</div>
+      <div id="vote-options"></div>
     </div>
   </div>
   
@@ -134,103 +145,6 @@ function switchMainTab(tab) {
     loadStandings();
   }
 }
-// --- ЛОГИКА ГОЛОСОВАНИЯ ---
-let currentVoteGameid = null;
-
-async function initVote(gid, home, visitor) {
-  currentVoteGameid = gid;
-  const block = document.getElementById("vote-block");
-  const options = document.getElementById("vote-options");
-  const result = document.getElementById("vote-result");
-  
-  block.style.display = "block";
-  options.style.display = "flex";
-  result.style.display = "none";
-
-  // Проверяем, голосовал ли уже этот браузер
-  const voted = localStorage.getItem(`voted_${gid}`);
-  
-  options.innerHTML = `
-    <button onclick="castVote('home', '${home}')" class="vote-btn" id="vote-home" style="padding:12px; border-radius:8px; background:#21262d; color:#fff; border:1px solid var(--border); cursor:pointer; font-weight:700; display:flex; justify-content:space-between;">${home} <span id="pct-home">0%</span></button>
-    <button onclick="castVote('draw', '${home} — ${visitor}')" class="vote-btn" id="vote-draw" style="padding:12px; border-radius:8px; background:#21262d; color:#fff; border:1px solid var(--border); cursor:pointer; font-weight:700; display:flex; justify-content:space-between;">Ничья <span id="pct-draw">0%</span></button>
-    <button onclick="castVote('away', '${visitor}')" class="vote-btn" id="vote-away" style="padding:12px; border-radius:8px; background:#21262d; color:#fff; border:1px solid var(--border); cursor:pointer; font-weight:700; display:flex; justify-content:space-between;">${visitor} <span id="pct-away">0%</span></button>
-  `;
-
-  if (voted) {
-    showVoteResults(gid);
-  } else {
-    // Показываем проценты (но не даем голосовать дважды)
-    showVoteResults(gid, false);
-  }
-}
-
-async function castVote(type, label) {
-  if (!currentVoteGameid) return;
-  if (localStorage.getItem(`voted_${currentVoteGameid}`)) {
-    alert("Вы уже проголосовали!");
-    return;
-  }
-
-  try {
-    const r = await fetch(`${SUPABASE}/rest/v1/match_votes`, {
-      method: "POST",
-      headers: {
-        "apikey": KEY,
-        "Authorization": "Bearer " + KEY,
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal"
-      },
-      body: JSON.stringify({
-        gameid: Number(currentVoteGameid),
-        vote_type: type
-      })
-    });
-
-    if (!r.ok) throw new Error("Ошибка голосования");
-    
-    localStorage.setItem(`voted_${currentVoteGameid}`, "true");
-    showVoteResults(currentVoteGameid);
-  } catch (e) {
-    alert("Не удалось проголосовать: " + e.message);
-  }
-}
-
-async function showVoteResults(gid, canVote = true) {
-  const options = document.getElementById("vote-options");
-  const result = document.getElementById("vote-result");
-  if (!gid) return;
-
-  const votes = await sb(`match_votes?gameid=eq.${gid}&select=vote_type`);
-  if (!votes) return;
-
-  let total = votes.length;
-  let h = 0, d = 0, a = 0;
-  votes.forEach(v => {
-    if (v.vote_type === 'home') h++;
-    else if (v.vote_type === 'draw') d++;
-    else if (v.vote_type === 'away') a++;
-  });
-
-  const pH = total > 0 ? Math.round((h / total) * 100) : 0;
-  const pD = total > 0 ? Math.round((d / total) * 100) : 0;
-  const pA = total > 0 ? Math.round((a / total) * 100) : 0;
-
-  // Обновляем текст на кнопках
-  document.getElementById("pct-home").textContent = `${pH}% (${h})`;
-  document.getElementById("pct-draw").textContent = `${pD}% (${d})`;
-  document.getElementById("pct-away").textContent = `${pA}% (${a})`;
-
-  if (!canVote) return;
-
-  // Если уже голосовал, скрываем возможность нажать еще раз
-  if (localStorage.getItem(`voted_${gid}`)) {
-    options.querySelectorAll(".vote-btn").forEach(btn => {
-      btn.disabled = true;
-      btn.style.cursor = "default";
-      btn.style.opacity = "0.7";
-    });
-  }
-}
 
 async function loadMatches() {
   const TEAM_FULL = { "АВТ": "Автомобилист", "АКБ": "Ак Барс", "АДМ": "Адмирал", "АМР": "Амур", "АВГ": "Авангард", "БАР": "Барыс", "ДИН": "Динамо М", "ДМН": "Динамо Мн", "ЛАД": "Лада", "ЛОК": "Локомотив", "ММГ": "Металлург Мг", "НХК": "Нефтехимик", "САЛ": "Салават Юлаев", "СЕВ": "Северсталь", "СИБ": "Сибирь", "СКА": "СКА", "СПА": "Спартак", "ТОР": "Торпедо НН", "ТРК": "Трактор", "СОЧ": "ХК Сочи", "ЦСК": "ЦСКА", "ДРК": "Шанхай Дрэгонс", "ШДР": "Шанхай Дрэгонс" };
@@ -239,8 +153,7 @@ async function loadMatches() {
     const matches = await sb(`matches?select=gameid,date,home,visitor,home_goals,visitor_goals,winner,status&order=date.desc,gameid.desc&limit=15`);
     if (!matches || matches.length === 0) { list.innerHTML = '<div class="loading">Нет матчей в базе.</div>'; mainBtn.style.display = "none"; return; }
     
-    // Ищем активный матч (статус live) или первый попавшийся
-    let activeMatch = matches.find(m => m.status === 'live') || matches[0];
+    let activeMatch = matches.find(m => m.status === 'live') || matches.find(m => m.status === 'soon') || matches[0];
     let isLive = (activeMatch.status === 'live');
     
     mainBtn.style.display = "block"; 
@@ -248,21 +161,19 @@ async function loadMatches() {
     mainBtn.className = isLive ? "main-btn live" : "main-btn";
     
     const aHome = TEAM_FULL[activeMatch.home] || activeMatch.home, aVis = TEAM_FULL[activeMatch.visitor] || activeMatch.visitor;
-    mainBtn.innerHTML = isLive ? `🔴 Смотреть LIVE: ${aHome} — ${aVis}` : `▶ Смотреть последний матч: ${aHome} — ${aVis}`;
+    mainBtn.innerHTML = isLive ? `🔴 Смотреть LIVE: ${aHome} — ${aVis}` : `▶ Смотреть матч: ${aHome} — ${aVis}`;
 
     list.innerHTML = matches.map(m => {
       const score = (m.home_goals !== null && m.visitor_goals !== null) ? `${m.home_goals} : ${m.visitor_goals}` : "- : -";
       const homeName = TEAM_FULL[m.home] || m.home, visName = TEAM_FULL[m.visitor] || m.visitor;
-      
-      let statusText = 'Скоро';
-      let statusClass = '';
+      let statusText = 'Скоро', statusClass = '';
       if (m.status === 'live') { statusText = 'LIVE'; statusClass = 'live-text'; }
       else if (m.status === 'finished' || m.winner) { statusText = 'Завершён'; }
-      
       return `<a href="live10.html?gameid=${m.gameid}" class="match-card ${m.status === 'live' ? 'is-live' : ''}"><div class="mc-team">${getLogoHtml(homeName)}<span class="mc-name">${homeName}</span></div><div class="mc-center"><div class="mc-score">${score}</div><div class="mc-status ${statusClass}">${statusText}</div></div><div class="mc-team away"><span class="mc-name">${visName}</span>${getLogoHtml(visName)}</div><div class="mc-date">${formatDate(m.date)}</div></a>`;
     }).join("");
-        // Запускаем голосование для активного матча
-    initVote(activeMatch.gameid, TEAM_FULL[activeMatch.home] || activeMatch.home, TEAM_FULL[activeMatch.visitor] || activeMatch.visitor);
+    
+    // Запускаем голосование для активного матча
+    initVote(activeMatch.gameid, aHome, aVis);
     
   } catch (e) { list.innerHTML = `<div class="error-msg">Ошибка: ${e.message}</div>`; }
 }
@@ -283,13 +194,8 @@ async function loadStandings() {
       if (m.winner === null) return;
       const h = m.home, v = m.visitor;
       if (!formMap[h] || !formMap[v]) return;
-      if (m.winner === h) {
-        if (formMap[h].length < 5) formMap[h].push(1);
-        if (formMap[v].length < 5) formMap[v].push(0);
-      } else if (m.winner === v) {
-        if (formMap[v].length < 5) formMap[v].push(1);
-        if (formMap[h].length < 5) formMap[h].push(0);
-      }
+      if (m.winner === h) { if (formMap[h].length < 5) formMap[h].push(1); if (formMap[v].length < 5) formMap[v].push(0); }
+      else if (m.winner === v) { if (formMap[v].length < 5) formMap[v].push(1); if (formMap[h].length < 5) formMap[h].push(0); }
     });
     const westRows = [], eastRows = [];
     data.forEach(t => {
@@ -332,6 +238,95 @@ async function loadNews() {
       return `<a class="ticker-item" href="${n.link || '#'}" target="_blank">${prefix}${n.text.replace(/</g, "&lt;")}</a>`;
     }).join("");
   } catch (e) { console.error(e); }
+}
+
+// --- ГОЛОСОВАНИЕ ---
+let currentVoteGameid = null;
+
+async function initVote(gid, home, visitor) {
+  currentVoteGameid = gid;
+  const block = document.getElementById("vote-block");
+  const title = document.getElementById("vote-title");
+  const options = document.getElementById("vote-options");
+  
+  block.style.display = "block";
+  title.textContent = `Кто победит: ${home} — ${visitor}?`;
+
+  // Проверяем, голосовал ли уже
+  const voted = localStorage.getItem(`voted_${gid}`);
+  
+  if (voted) {
+    showVoteResults(gid, home, visitor, true);
+  } else {
+    options.innerHTML = `
+      <div class="vote-option" onclick="castVote('home', '${home}', '${visitor}')">
+        <div class="vote-option-top"><span>${home}</span><span>П1</span></div>
+        <div class="vote-bar"><div class="vote-bar-fill home" style="width:0%"></div></div>
+      </div>
+      <div class="vote-option" onclick="castVote('draw', '${home}', '${visitor}')">
+        <div class="vote-option-top"><span>Ничья</span><span>Х</span></div>
+        <div class="vote-bar"><div class="vote-bar-fill draw" style="width:0%"></div></div>
+      </div>
+      <div class="vote-option" onclick="castVote('away', '${home}', '${visitor}')">
+        <div class="vote-option-top"><span>${visitor}</span><span>П2</span></div>
+        <div class="vote-bar"><div class="vote-bar-fill away" style="width:0%"></div></div>
+      </div>
+    `;
+    // Показываем текущие проценты (но не даем голосовать дважды)
+    showVoteResults(gid, home, visitor, false);
+  }
+}
+
+async function castVote(type, home, visitor) {
+  if (!currentVoteGameid) return;
+  if (localStorage.getItem(`voted_${currentVoteGameid}`)) return;
+
+  try {
+    const r = await fetch(`${SUPABASE}/rest/v1/match_votes`, {
+      method: "POST",
+      headers: { "apikey": KEY, "Authorization": "Bearer " + KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
+      body: JSON.stringify({ gameid: Number(currentVoteGameid), vote_type: type })
+    });
+
+    if (!r.ok) throw new Error("Ошибка голосования");
+    localStorage.setItem(`voted_${currentVoteGameid}`, "true");
+    showVoteResults(currentVoteGameid, home, visitor, true);
+  } catch (e) { alert("Не удалось проголосовать: " + e.message); }
+}
+
+async function showVoteResults(gid, home, visitor, hideClick) {
+  const options = document.getElementById("vote-options");
+  if (!gid) return;
+
+  const votes = await sb(`match_votes?gameid=eq.${gid}&select=vote_type`);
+  if (!votes) return;
+
+  let total = votes.length;
+  let h = 0, d = 0, a = 0;
+  votes.forEach(v => { if (v.vote_type === 'home') h++; else if (v.vote_type === 'draw') d++; else if (v.vote_type === 'away') a++; });
+
+  const pH = total > 0 ? Math.round((h / total) * 100) : 0;
+  const pD = total > 0 ? Math.round((d / total) * 100) : 0;
+  const pA = total > 0 ? Math.round((a / total) * 100) : 0;
+
+  options.innerHTML = `
+    <div class="vote-option" ${hideClick ? '' : 'onclick="castVote(\'home\', \'' + home + '\', \'' + visitor + '\')"'}>
+      <div class="vote-option-top"><span>${home}</span><span>${pH}% (${h})</span></div>
+      <div class="vote-bar"><div class="vote-bar-fill home" style="width:${pH}%"></div></div>
+    </div>
+    <div class="vote-option" ${hideClick ? '' : 'onclick="castVote(\'draw\', \'' + home + '\', \'' + visitor + '\')"'}>
+      <div class="vote-option-top"><span>Ничья</span><span>${pD}% (${d})</span></div>
+      <div class="vote-bar"><div class="vote-bar-fill draw" style="width:${pD}%"></div></div>
+    </div>
+    <div class="vote-option" ${hideClick ? '' : 'onclick="castVote(\'away\', \'' + home + '\', \'' + visitor + '\')"'}>
+      <div class="vote-option-top"><span>${visitor}</span><span>${pA}% (${a})</span></div>
+      <div class="vote-bar"><div class="vote-bar-fill away" style="width:${pA}%"></div></div>
+    </div>
+  `;
+
+  if (hideClick) {
+    options.querySelectorAll(".vote-option").forEach(el => { el.style.cursor = "default"; el.onclick = null; });
+  }
 }
 
 loadMatches(); loadStandings(); loadNews(); setInterval(loadNews, 300000);
