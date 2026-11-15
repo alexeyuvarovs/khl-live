@@ -117,7 +117,7 @@
   .loading { text-align: center; color: var(--muted); padding: 40px; font-size: 15px; font-weight: 700; }
   .update-timer { text-align: center; font-size: 12px; color: #484f58; padding: 20px 0; font-weight: 700; }
 
-  /* Модалка */
+  /* Модалка игрока */
   .player-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
   .player-modal-inner { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 90%; max-width: 400px; padding: 24px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
   .close-btn { position: absolute; top: 10px; right: 15px; background: none; border: none; color: var(--muted); font-size: 28px; cursor: pointer; z-index: 10; }
@@ -131,18 +131,24 @@
   .pm-cell-title { color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 700; }
   .pm-cell-val { font-size: 20px; font-weight: 900; color: #fff; margin-top: 2px; }
 
-  /* ЧАТ (перенесен наверх) */
-  .chat-container { max-width: 800px; margin: 0 auto 16px; padding: 0 12px; display: flex; flex-direction: column; height: 300px; }
-  .chat-inner { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; height: 100%; }
+  /* ПЛАВАЮЩИЙ ЧАТ */
+  .chat-fab { position: fixed; bottom: 60px; right: 20px; width: 60px; height: 60px; background: var(--visitor); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; cursor: pointer; box-shadow: 0 4px 15px rgba(88,166,255,0.4); z-index: 500; transition: transform 0.2s; }
+  .chat-fab:hover { transform: scale(1.1); }
+  .chat-window { position: fixed; bottom: 130px; right: 20px; width: 350px; height: 500px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; display: none; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 500; overflow: hidden; animation: slideUp 0.3s ease-out; }
+  .chat-window.open { display: flex; }
+  @media (max-width: 600px) { .chat-window { width: calc(100% - 40px); right: 20px; bottom: 130px; height: 60vh; } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   .chat-header { display: flex; justify-content: space-between; padding: 10px 15px; background: #21262d; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
+  .chat-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; padding: 0 5px; }
+  .chat-close:hover { color: #fff; }
   .chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
   .chat-msg { display: flex; flex-direction: column; max-width: 85%; }
   .chat-msg.own { align-self: flex-end; align-items: flex-end; }
-  .chat-msg .msg-author { font-size: 11px; color: var(--muted); margin-bottom: 2px; font-weight: 700; }
-  .chat-msg .msg-bubble { background: #21262d; padding: 6px 10px; border-radius: 10px; border-bottom-left-radius: 2px; font-size: 13px; word-wrap: break-word; }
-  .chat-msg.own .msg-bubble { background: #1f6feb; color: #fff; border-bottom-left-radius: 10px; border-bottom-right-radius: 2px; }
+  .chat-msg .msg-author { font-size: 11px; color: var(--muted); margin-bottom: 2px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+  .chat-msg .msg-bubble { background: #21262d; padding: 8px 12px; border-radius: 12px; border-bottom-left-radius: 2px; font-size: 14px; word-wrap: break-word; }
+  .chat-msg.own .msg-bubble { background: #1f6feb; color: #fff; border-bottom-left-radius: 12px; border-bottom-right-radius: 2px; }
   .chat-msg .msg-time { font-size: 10px; color: #484f58; margin-top: 2px; }
-  .chat-input-wrap { display: flex; padding: 8px; background: #21262d; border-top: 1px solid var(--border); gap: 6px; }
+  .chat-input-wrap { display: flex; padding: 10px; background: #21262d; border-top: 1px solid var(--border); gap: 6px; }
   .chat-input-wrap input { flex-grow: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: var(--text); font-family: inherit; font-size: 13px; }
   .chat-input-wrap input:focus { outline: none; border-color: var(--visitor); }
   .chat-input-wrap button { background: var(--visitor); border: none; color: #fff; border-radius: 6px; padding: 0 12px; cursor: pointer; font-size: 16px; }
@@ -163,26 +169,6 @@
   <div class="team-side home-side"><span class="team-code" id="home-code">...</span><img id="home-logo" class="tiny-logo" style="display:none;"><div class="sog-box"><span>БР</span><b id="home-sog">-</b></div></div>
   <div class="score-center"><div class="score-numbers"><span id="score-home">0</span><span class="score-divider">:</span><span id="score-away">0</span></div><div class="period-time" id="period-block"><span class="live-dot" id="live-dot"></span><span id="tv-period">Загрузка...</span></div></div>
   <div class="team-side away-side"><div class="sog-box"><span>БР</span><b id="away-sog">-</b></div><img id="visitor-logo" class="tiny-logo" style="display:none;"><span class="team-code" id="visitor-code">...</span></div>
-</div>
-
-<!-- ЧАТ (ТЕПЕРЬ СВЕРХУ) -->
-<div class="chat-container" id="chat-container">
-  <div class="chat-inner">
-    <div class="chat-header">
-      <span>💬 Чат болельщиков</span>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <span class="chat-online" style="color:var(--muted); font-size:11px;">Live</span>
-        <button onclick="changeNick()" style="background:none; border:none; color:#58a6ff; cursor:pointer; font-size:11px; font-weight:700; padding:0;">Сменить ник</button>
-      </div>
-    </div>
-    <div class="chat-messages" id="chat-messages">
-      <div class="chat-loading">Загрузка сообщений...</div>
-    </div>
-    <div class="chat-input-wrap">
-      <input type="text" id="chat-input" placeholder="Напишите что-нибудь..." maxlength="300" autocomplete="off">
-      <button id="chat-send" onclick="sendChatMessage()">➤</button>
-    </div>
-  </div>
 </div>
 
 <div id="period-breakdown" class="period-breakdown">
@@ -237,6 +223,22 @@
       <div class="pm-cell"><div class="pm-cell-title">+/-</div><div class="pm-cell-val" id="pm-pm">0</div></div>
       <div class="pm-cell"><div class="pm-cell-title">Время</div><div class="pm-cell-val" id="pm-toi">00:00</div></div>
     </div>
+  </div>
+</div>
+
+<!-- ПЛАВАЮЩИЙ ЧАТ -->
+<div class="chat-fab" id="chat-fab" onclick="toggleChat()">💬</div>
+<div class="chat-window" id="chat-window">
+  <div class="chat-header">
+    <span>💬 Чат болельщиков</span>
+    <button class="chat-close" onclick="toggleChat()">&times;</button>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-loading">Загрузка...</div>
+  </div>
+  <div class="chat-input-wrap">
+    <input type="text" id="chat-input" placeholder="Напишите..." maxlength="300" autocomplete="off">
+    <button id="chat-send" onclick="sendChatMessage()">➤</button>
   </div>
 </div>
 
@@ -649,6 +651,11 @@ async function loadNews() {
 }
 
 // --- ЛОГИКА ЧАТА ---
+function toggleChat() {
+  const win = document.getElementById("chat-window");
+  if (win) win.classList.toggle("open");
+}
+
 async function loadChat() {
   if (!currentGameid) return;
   try {
