@@ -7,7 +7,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700;900&display=swap" rel="stylesheet">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
-  :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3; --muted: #8b949e; --home: #f85149; --visitor: #58a6ff; --goal-bg: rgba(35,134,54,0.15); --goal-border: #238636; }
+  :root { 
+    --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3; --muted: #8b949e; 
+    --home: #f85149; --visitor: #58a6ff; --goal-bg: rgba(35,134,54,0.15); --goal-border: #238636;
+    --win: #238636; --draw: #d29922; --lose: #f85149;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Roboto Condensed', sans-serif; background: var(--bg); color: var(--text); padding-bottom: 60px; display: flex; flex-direction: column; min-height: 100vh; }
   
@@ -128,6 +132,24 @@
   .pm-cell-title { color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 700; }
   .pm-cell-val { font-size: 20px; font-weight: 900; color: #fff; margin-top: 2px; }
 
+  /* ЧАТ */
+  .chat-container { margin-top: 20px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; height: 400px; }
+  .chat-header { display: flex; justify-content: space-between; padding: 10px 15px; background: #21262d; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
+  .chat-online { color: var(--muted); font-size: 12px; }
+  .chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .chat-loading { text-align: center; color: var(--muted); font-size: 13px; margin-top: 20px; }
+  .chat-msg { display: flex; flex-direction: column; max-width: 85%; }
+  .chat-msg.own { align-self: flex-end; align-items: flex-end; }
+  .chat-msg .msg-author { font-size: 11px; color: var(--muted); margin-bottom: 2px; font-weight: 700; }
+  .chat-msg .msg-bubble { background: #21262d; padding: 8px 12px; border-radius: 12px; border-bottom-left-radius: 2px; font-size: 14px; word-wrap: break-word; }
+  .chat-msg.own .msg-bubble { background: #1f6feb; color: #fff; border-bottom-left-radius: 12px; border-bottom-right-radius: 2px; }
+  .chat-msg .msg-time { font-size: 10px; color: #484f58; margin-top: 2px; }
+  .chat-input-wrap { display: flex; padding: 10px; background: #21262d; border-top: 1px solid var(--border); gap: 8px; }
+  .chat-input-wrap input { flex-grow: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; color: var(--text); font-family: inherit; font-size: 14px; }
+  .chat-input-wrap input:focus { outline: none; border-color: var(--visitor); }
+  .chat-input-wrap button { background: var(--visitor); border: none; color: #fff; border-radius: 6px; padding: 0 15px; cursor: pointer; font-size: 18px; transition: background 0.2s; }
+  .chat-input-wrap button:hover { background: #409eff; }
+
   /* Бегущая строка */
   .ticker-wrap { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #000; border-top: 1px solid #30363d; z-index: 99999; display: flex; overflow: hidden; align-items: center; }
   .ticker-title { background: #f85149; color: #fff; font-weight: 900; padding: 0 15px; height: 100%; display: flex; align-items: center; z-index: 10; white-space: nowrap; }
@@ -161,7 +183,24 @@
   <div class="tab" onclick="switchTab('stats')">Статистика</div>
 </div>
 
-<div class="feed-container active" id="feed-container"><div id="feed" class="event-list"><div class="loading">Загрузка...</div></div></div>
+<div class="feed-container active" id="feed-container">
+  <div id="feed" class="event-list"><div class="loading">Загрузка...</div></div>
+  
+  <!-- Блок чата -->
+  <div class="chat-container" id="chat-container">
+    <div class="chat-header">
+      <span>💬 Чат болельщиков</span>
+      <span class="chat-online" id="chat-online">Live</span>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-loading">Загрузка сообщений...</div>
+    </div>
+    <div class="chat-input-wrap">
+      <input type="text" id="chat-input" placeholder="Напишите что-нибудь..." maxlength="300" autocomplete="off">
+      <button id="chat-send" onclick="sendChatMessage()">➤</button>
+    </div>
+  </div>
+</div>
 
 <div class="lineups-container" id="lineups-container"><div class="loading">Загрузка составов...</div></div>
 
@@ -215,6 +254,7 @@ let roster = {}, goalsData = {}, penaltiesData = {}, commentaryData = [], season
 let lastMaxEventId = 0, homeTeam = "", visitorTeam = "", currentGameid = null, currentMatchData = null;
 let allShots = [], currentShotFilter = 'all', currentPlayerFilter = 'all';
 let currentStatsPeriod = 0, teamStatsData = null, lastUpdateTime = Date.now(), isUpdating = false, lastShotsUpdate = 0;
+let chatLastId = 0;
 
 const cleanNum = (n) => String(n ?? '').trim().replace(/^0+/, '').replace(/\.0$/, '') || '0';
 const parseTimeStr = (str) => { if (!str) return 0; const p = String(str).split(":"); return Number(p[0]) * 60 + Number(p[1]); };
@@ -352,7 +392,6 @@ async function loadFeed() {
       document.getElementById("pb-p1").textContent = `${p1_h} : ${p1_v}`;
       document.getElementById("pb-p2").textContent = `${p2_h} : ${p2_v}`;
       document.getElementById("pb-p3").textContent = `${p3_h} : ${p3_v}`;
-      // Подсветка лидера периода
       ["pb-item-1", "pb-item-2", "pb-item-3"].forEach((id, idx) => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -368,42 +407,38 @@ async function loadFeed() {
 
 function updateHeaderStats(events, maxPeriod) {
   let sA = 0, sB = 0; events.forEach(e => { if (e.type === 'shot' && e.result !== 'miss') { if (e.team_ab === 'A') sA++; else sB++; } });
-  document.getElementById("home-sog").textContent = sA; document.getElementById("away-sog").textContent = sB;
-  if (currentMatchData?.winner) { document.getElementById("tv-period").textContent = "Матч завершён"; document.getElementById("live-dot").style.display = "none"; }
-  else { const perNames = { 1: "1ST", 2: "2ND", 3: "3RD", 4: "OT" }; document.getElementById("tv-period").textContent = perNames[maxPeriod] || `${maxPeriod}-й период`; document.getElementById("live-dot").style.display = "inline-block"; }
+  const hSog = document.getElementById("home-sog"); if(hSog) hSog.textContent = sA;
+  const aSog = document.getElementById("away-sog"); if(aSog) aSog.textContent = sB;
+  if (currentMatchData?.winner) { const tp = document.getElementById("tv-period"); if(tp) tp.textContent = "Матч завершён"; const ld = document.getElementById("live-dot"); if(ld) ld.style.display = "none"; }
+  else { const perNames = { 1: "1ST", 2: "2ND", 3: "3RD", 4: "OT" }; const tp = document.getElementById("tv-period"); if(tp) tp.textContent = perNames[maxPeriod] || `${maxPeriod}-й период`; const ld = document.getElementById("live-dot"); if(ld) ld.style.display = "inline-block"; }
 }
 
 function renderTimeline() {
   const container = document.getElementById("timeline-container"), bar = document.getElementById("timeline-bar"), labels = document.getElementById("tl-labels");
+  if(!container || !bar) return;
   const goals = Object.values(goalsData).sort((a, b) => a.period !== b.period ? a.period - b.period : parseTimeStr(a.time_ms) - parseTimeStr(b.time_ms));
-  if (goals.length === 0) { if(container) container.style.display = "none"; return; } 
-  if(container) container.style.display = "block";
+  if (goals.length === 0) { container.style.display = "none"; return; } 
+  container.style.display = "block";
   const maxPeriod = Math.max(...goals.map(g => Number(g.period))), hasOT = maxPeriod >= 4, totalMin = hasOT ? 65 : 60, numP = hasOT ? 4 : 3;
-  if(bar) {
-    bar.innerHTML = ''; 
-    for (let i = 1; i < numP; i++) { 
-      const div = document.createElement("div"); 
-      div.style.cssText = "position:absolute;top:0;bottom:0;width:1px;background:#30363d;"; 
-      div.style.left = (i * (100 / numP)) + "%"; 
-      bar.appendChild(div); 
-    }
+  bar.innerHTML = ''; 
+  for (let i = 1; i < numP; i++) { 
+    const div = document.createElement("div"); 
+    div.style.cssText = "position:absolute;top:0;bottom:0;width:1px;background:#30363d;"; 
+    div.style.left = (i * (100 / numP)) + "%"; 
+    bar.appendChild(div); 
   }
-  if(labels) {
-    labels.innerHTML = hasOT ? "<span>0'</span><span>20'</span><span>40'</span><span>60'</span><span>65'</span>" : "<span>0'</span><span>20'</span><span>40'</span><span>60'</span>";
-  }
-  if(bar) {
-    goals.forEach(g => { 
-      const minP = parseTimeStr(g.time_ms) / 60, absM = (Number(g.period) - 1) * 20 + minP; 
-      let pos = (absM / totalMin) * 100; 
-      if (isNaN(pos)) pos = 50; 
-      pos = Math.min(97, Math.max(3, pos)); 
-      const color = g.team === homeTeam ? "#f85149" : "#58a6ff"; 
-      const marker = document.createElement("div"); 
-      marker.style.cssText = `position:absolute;top:50%;transform:translate(-50%,-50%);height:18px;min-width:24px;padding:0 4px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:white;cursor:pointer;left:${pos}%;background:${color};border:2px solid #0d1117;z-index:10;`; 
-      marker.textContent = `${g.score_a}:${g.score_b}`; 
-      bar.appendChild(marker); 
-    });
-  }
+  if(labels) labels.innerHTML = hasOT ? "<span>0'</span><span>20'</span><span>40'</span><span>60'</span><span>65'</span>" : "<span>0'</span><span>20'</span><span>40'</span><span>60'</span>";
+  goals.forEach(g => { 
+    const minP = parseTimeStr(g.time_ms) / 60, absM = (Number(g.period) - 1) * 20 + minP; 
+    let pos = (absM / totalMin) * 100; 
+    if (isNaN(pos)) pos = 50; 
+    pos = Math.min(97, Math.max(3, pos)); 
+    const color = g.team === homeTeam ? "#f85149" : "#58a6ff"; 
+    const marker = document.createElement("div"); 
+    marker.style.cssText = `position:absolute;top:50%;transform:translate(-50%,-50%);height:18px;min-width:24px;padding:0 4px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:white;cursor:pointer;left:${pos}%;background:${color};border:2px solid #0d1117;z-index:10;`; 
+    marker.textContent = `${g.score_a}:${g.score_b}`; 
+    bar.appendChild(marker); 
+  });
 }
 
 async function loadShots() { if (!currentGameid) return; allShots = await sb(`shots?gameid=eq.${currentGameid}`) || []; buildPlayerFilter(); renderRink(); }
@@ -554,7 +589,7 @@ async function switchMatch(gid) {
   if (!gid) return;
   const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?gameid=" + gid;
   window.history.pushState({ path: newUrl }, '', newUrl);
-  currentGameid = gid; roster = {}; goalsData = {}; penaltiesData = {}; commentaryData = []; allShots = []; teamStatsData = null; lastMaxEventId = 0; isUpdating = false; lastShotsUpdate = 0;
+  currentGameid = gid; roster = {}; goalsData = {}; penaltiesData = {}; commentaryData = []; allShots = []; teamStatsData = null; lastMaxEventId = 0; isUpdating = false; lastShotsUpdate = 0; chatLastId = 0;
   document.getElementById("feed").innerHTML = '<div class="loading">Загрузка...</div>';
   const m = await sb(`matches?gameid=eq.${gid}&select=gameid,home,visitor,home_goals,visitor_goals,winner`);
   if (m && m[0]) { homeTeam = m[0].home; visitorTeam = m[0].visitor; currentMatchData = m[0]; updateHeaderTeams(m[0]); }
@@ -579,7 +614,7 @@ async function tick() {
           if (document.getElementById("stats-container").classList.contains("active")) renderTeamStats();
       }
     }
-    lastUpdateTime = Date.now(); document.getElementById("update-timer").textContent = "Обновлено только что";
+    lastUpdateTime = Date.now(); const ut = document.getElementById("update-timer"); if(ut) ut.textContent = "Обновлено только что";
   } catch (e) { console.error("Ошибка в tick:", e); } finally { clearTimeout(safety); isUpdating = false; }
 }
 
@@ -611,9 +646,99 @@ async function loadNews() {
   } catch (e) { console.error("Ошибка новостей:", e); }
 }
 
+// --- ЛОГИКА ЧАТА ---
+async function loadChat() {
+  if (!currentGameid) return;
+  try {
+    const msgs = await sb(`chat_messages?gameid=eq.${currentGameid}&order=id.desc&limit=50`);
+    const container = document.getElementById("chat-messages");
+    if (!container) return;
+
+    if (!msgs || msgs.length === 0) {
+      if (chatLastId === 0) container.innerHTML = '<div class="chat-loading">Сообщений пока нет. Будьте первым!</div>';
+      return;
+    }
+
+    msgs.sort((a, b) => a.id - b.id);
+    const maxId = msgs[msgs.length - 1].id;
+    
+    if (maxId > chatLastId) {
+      chatLastId = maxId;
+      container.innerHTML = msgs.map(m => {
+        const isOwn = m.username === getMyChatName();
+        const time = new Date(m.created_at).toLocaleTimeString("ru-RU", { hour: '2-digit', minute: '2-digit' });
+        const safeText = m.message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        return `<div class="chat-msg ${isOwn ? 'own' : ''}">
+          <div class="msg-author">${m.username || 'Болельщик'}</div>
+          <div class="msg-bubble">${safeText}</div>
+          <div class="msg-time">${time}</div>
+        </div>`;
+      }).join("");
+      container.scrollTop = container.scrollHeight;
+    }
+  } catch (e) { console.error("Ошибка чата:", e); }
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById("chat-input");
+  const msg = input.value.trim();
+  if (!msg || !currentGameid) return;
+
+  const btn = document.getElementById("chat-send");
+  btn.disabled = true;
+
+  try {
+    let myName = getMyChatName();
+    if (!myName) {
+      myName = "Болельщик_" + Math.floor(Math.random() * 1000);
+      localStorage.setItem("chatName", myName);
+    }
+
+    const r = await fetch(`${SUPABASE}/rest/v1/chat_messages`, {
+      method: "POST",
+      headers: {
+        "apikey": KEY,
+        "Authorization": "Bearer " + KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        gameid: Number(currentGameid),
+        username: myName,
+        message: msg
+      })
+    });
+
+    if (!r.ok) throw new Error("Ошибка отправки");
+    
+    input.value = "";
+    await loadChat();
+  } catch (e) {
+    alert("Не удалось отправить сообщение: " + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function getMyChatName() {
+  return localStorage.getItem("chatName");
+}
+
+function initChat() {
+  const input = document.getElementById("chat-input");
+  if (input) {
+    input.addEventListener("keypress", function(e) {
+      if (e.key === "Enter") sendChatMessage();
+    });
+  }
+  loadChat();
+  setInterval(loadChat, 5000);
+}
+
 async function initApp() { 
   await tick(); 
   loadNews();   
+  initChat();
   setInterval(tick, 15000); 
   setInterval(loadNews, 300000); 
 }
