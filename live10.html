@@ -186,11 +186,14 @@
 <div class="feed-container active" id="feed-container">
   <div id="feed" class="event-list"><div class="loading">Загрузка...</div></div>
   
-  <!-- Блок чата -->
+    <!-- Блок чата -->
   <div class="chat-container" id="chat-container">
     <div class="chat-header">
       <span>💬 Чат болельщиков</span>
-      <span class="chat-online" id="chat-online">Live</span>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <span class="chat-online" id="chat-online">Live</span>
+        <button onclick="changeNick()" style="background:none; border:none; color:#58a6ff; cursor:pointer; font-size:12px; font-weight:700; padding:0;">Сменить ник</button>
+      </div>
     </div>
     <div class="chat-messages" id="chat-messages">
       <div class="chat-loading">Загрузка сообщений...</div>
@@ -200,7 +203,6 @@
       <button id="chat-send" onclick="sendChatMessage()">➤</button>
     </div>
   </div>
-</div>
 
 <div class="lineups-container" id="lineups-container"><div class="loading">Загрузка составов...</div></div>
 
@@ -668,8 +670,11 @@ async function loadChat() {
         const isOwn = m.username === getMyChatName();
         const time = new Date(m.created_at).toLocaleTimeString("ru-RU", { hour: '2-digit', minute: '2-digit' });
         const safeText = m.message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        // Кнопка удаления (показываем всем, но работает только у админа)
+        const delBtn = `<span onclick="deleteChatMsg(${m.id})" style="cursor:pointer; color:#f85149; font-size:10px; margin-left:5px;" title="Удалить">❌</span>`;
+        
         return `<div class="chat-msg ${isOwn ? 'own' : ''}">
-          <div class="msg-author">${m.username || 'Болельщик'}</div>
+          <div class="msg-author">${m.username || 'Болельщик'} ${delBtn}</div>
           <div class="msg-bubble">${safeText}</div>
           <div class="msg-time">${time}</div>
         </div>`;
@@ -733,6 +738,43 @@ function initChat() {
   }
   loadChat();
   setInterval(loadChat, 5000);
+}
+// Смена ника
+function changeNick() {
+  const newName = prompt("Введите ваш новый ник (до 20 символов):", getMyChatName() || "Болельщик");
+  if (newName && newName.trim().length > 0) {
+    localStorage.setItem("chatName", newName.trim().substring(0, 20));
+    alert("Ник изменен на: " + newName.trim());
+    loadChat(); // Перезагружаем чат, чтобы увидеть свои сообщения под новым ником
+  }
+}
+
+// Удаление сообщения (работает только для админа через service_role, 
+// но с anon-ключом выдаст ошибку, если мы не добавили политику)
+async function deleteChatMsg(id) {
+  if (!confirm("Удалить это сообщение?")) return;
+  
+  try {
+    const r = await fetch(`${SUPABASE}/rest/v1/chat_messages?id=eq.${id}`, {
+      method: "DELETE",
+      headers: {
+        "apikey": KEY,
+        "Authorization": "Bearer " + KEY
+      }
+    });
+
+    if (!r.ok) {
+      // Если anon-ключ не может удалять (а он не может), выбрасываем ошибку
+      const err = await r.json();
+      throw new Error(err.message || "Нет прав на удаление");
+    }
+    
+    // Если удалили, обновляем чат
+    chatLastId = 0; // Сбрасываем, чтобы перерисовать
+    loadChat();
+  } catch (e) {
+    alert("Ошибка удаления: " + e.message + "\n(Удалять сообщения может только админ через service_role)");
+  }
 }
 
 async function initApp() { 
