@@ -97,6 +97,7 @@
   .pm-cell-title { color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 700; }
   .pm-cell-val { font-size: 20px; font-weight: 900; color: #fff; margin-top: 2px; }
 
+  /* Плавающий чат */
   .chat-fab { position: fixed; bottom: 60px; right: 20px; width: 60px; height: 60px; background: var(--visitor); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; cursor: pointer; box-shadow: 0 4px 15px rgba(88,166,255,0.4); z-index: 9998; transition: transform 0.2s; }
   .chat-fab:hover { transform: scale(1.1); }
   .chat-window { position: fixed; bottom: 130px; right: 20px; width: 350px; height: 450px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; display: none; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 9999; overflow: hidden; animation: slideUp 0.3s ease-out; }
@@ -183,6 +184,7 @@
   </div>
 </div>
 
+<!-- Плавающий чат -->
 <div class="chat-fab" id="chat-fab" onclick="toggleChat()">💬</div>
 <div class="chat-window" id="chat-window">
   <div class="chat-header">
