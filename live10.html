@@ -131,17 +131,15 @@
   .pm-cell-title { color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 700; }
   .pm-cell-val { font-size: 20px; font-weight: 900; color: #fff; margin-top: 2px; }
 
-    /* ПЛАВАЮЩИЙ ЧАТ */
+  /* ПЛАВАЮЩИЙ ЧАТ */
   .chat-fab { position: fixed; bottom: 60px; right: 20px; width: 60px; height: 60px; background: var(--visitor); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; cursor: pointer; box-shadow: 0 4px 15px rgba(88,166,255,0.4); z-index: 9998; transition: transform 0.2s; }
   .chat-fab:hover { transform: scale(1.1); }
   
-  /* Окно чата */
   .chat-window { position: fixed; bottom: 130px; right: 20px; width: 350px; height: 450px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; display: none; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 9999; overflow: hidden; animation: slideUp 0.3s ease-out; }
   .chat-window.open { display: flex; }
   @media (max-width: 600px) { .chat-window { width: calc(100% - 40px); right: 20px; bottom: 130px; height: 50vh; } }
   @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   
-  /* Шапка чата */
   .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: #21262d; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
   .chat-header-buttons { display: flex; gap: 10px; align-items: center; }
   .chat-nick-btn { background: none; border: none; color: var(--visitor); cursor: pointer; font-size: 11px; font-weight: 700; padding: 0; }
@@ -156,7 +154,6 @@
   .chat-msg .msg-bubble { background: #21262d; padding: 8px 12px; border-radius: 12px; border-bottom-left-radius: 2px; font-size: 14px; word-wrap: break-word; }
   .chat-msg.own .msg-bubble { background: #1f6feb; color: #fff; border-bottom-left-radius: 12px; border-bottom-right-radius: 2px; }
   .chat-msg .msg-time { font-size: 10px; color: #484f58; margin-top: 2px; }
-  
   .chat-input-wrap { display: flex; padding: 10px; background: #21262d; border-top: 1px solid var(--border); gap: 6px; }
   .chat-input-wrap input { flex-grow: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: var(--text); font-family: inherit; font-size: 13px; }
   .chat-input-wrap input:focus { outline: none; border-color: var(--visitor); }
@@ -252,6 +249,11 @@
     <input type="text" id="chat-input" placeholder="Напишите..." maxlength="300" autocomplete="off">
     <button id="chat-send" onclick="sendChatMessage()">➤</button>
   </div>
+</div>
+
+<div class="ticker-wrap">
+  <div class="ticker-title">НОВОСТИ</div>
+  <div class="ticker" id="ticker-content"><span class="ticker-item">Загрузка...</span></div>
 </div>
 
 <script>
@@ -353,29 +355,18 @@ async function loadFeed() {
         if (e.jn && e.jn !== "0") { const pObj = roster[`${e.team_ab}_${cleanNum(e.jn)}`]; if (pObj) playerName = `<b class="player-link" onclick="showPlayerModal('${e.team_ab}', '${cleanNum(e.jn)}')">${pObj.name}</b>`; else playerName = `№${e.jn}`; }
         let icon = "", title = "", details = "", extraHtml = "";
         switch (e.type) {
-                    case "goal": {
+          case "goal": {
             icon = "🚨"; title = "ГОЛ!"; 
-            
-            // Извлекаем данные из extra (там лежат ассистенты и счет)
             const ex = parseExtra(e.extra);
             const scorer = ex.scorer?.name || (roster[`${e.team_ab}_${cleanNum(e.jn)}`]?.name) || `№${e.jn}`;
             const assist1 = ex.assist_1?.name;
             const assist2 = ex.assist_2?.name;
             const scoreA = ex.scA !== undefined ? ex.scA : '';
             const scoreB = ex.scB !== undefined ? ex.scB : '';
-            
-            // Формируем строку с ассистентами
             let assistStr = "";
-            if (assist1 || assist2) {
-                assistStr = `<div class="assists">Ассисты: <b>${assist1 || ''}</b>${assist2 ? ', <b>' + assist2 + '</b>' : ''}</div>`;
-            }
-
-            // Формируем строку со счетом
+            if (assist1 || assist2) { assistStr = `<div class="assists">Ассисты: <b>${assist1 || ''}</b>${assist2 ? ', <b>' + assist2 + '</b>' : ''}</div>`; }
             let scoreStr = "";
-            if (scoreA !== '' && scoreB !== '') {
-                scoreStr = `<div class="score-after">Счёт: ${scoreA} : ${scoreB}</div>`;
-            }
-
+            if (scoreA !== '' && scoreB !== '') { scoreStr = `<div class="score-after">Счёт: ${scoreA} : ${scoreB}</div>`; }
             details = `<span class="${teamClass}">${teamName}</span> <b>${scorer}</b>`; 
             extraHtml = assistStr + scoreStr;
             break;
