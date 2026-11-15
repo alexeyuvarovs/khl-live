@@ -353,16 +353,31 @@ async function loadFeed() {
         if (e.jn && e.jn !== "0") { const pObj = roster[`${e.team_ab}_${cleanNum(e.jn)}`]; if (pObj) playerName = `<b class="player-link" onclick="showPlayerModal('${e.team_ab}', '${cleanNum(e.jn)}')">${pObj.name}</b>`; else playerName = `№${e.jn}`; }
         let icon = "", title = "", details = "", extraHtml = "";
         switch (e.type) {
-          case "goal": {
-            icon = "🚨"; title = "ГОЛ!"; details = `<span class="${teamClass}">${teamName}</span> ${playerName}`; 
-            const gKey = `${e.period}_${e.time_ms}`; 
-            if (goalsData[gKey]) { 
-                const g = goalsData[gKey]; 
-                const a1 = g.assist_1 ? `<b>${g.assist_1.split(" ")[0]}</b>` : null; 
-                const a2 = g.assist_2 ? `<b>${g.assist_2.split(" ")[0]}</b>` : null; 
-                if (a1 || a2) extraHtml = `<div class="assists">Ассисты: ${[a1, a2].filter(Boolean).join(', ')}</div>`; 
-                if (g.score_a !== undefined) extraHtml += `<div class="score-after">Счёт: ${g.score_a} : ${g.score_b}</div>`; 
-            } 
+                    case "goal": {
+            icon = "🚨"; title = "ГОЛ!"; 
+            
+            // Извлекаем данные из extra (там лежат ассистенты и счет)
+            const ex = parseExtra(e.extra);
+            const scorer = ex.scorer?.name || (roster[`${e.team_ab}_${cleanNum(e.jn)}`]?.name) || `№${e.jn}`;
+            const assist1 = ex.assist_1?.name;
+            const assist2 = ex.assist_2?.name;
+            const scoreA = ex.scA !== undefined ? ex.scA : '';
+            const scoreB = ex.scB !== undefined ? ex.scB : '';
+            
+            // Формируем строку с ассистентами
+            let assistStr = "";
+            if (assist1 || assist2) {
+                assistStr = `<div class="assists">Ассисты: <b>${assist1 || ''}</b>${assist2 ? ', <b>' + assist2 + '</b>' : ''}</div>`;
+            }
+
+            // Формируем строку со счетом
+            let scoreStr = "";
+            if (scoreA !== '' && scoreB !== '') {
+                scoreStr = `<div class="score-after">Счёт: ${scoreA} : ${scoreB}</div>`;
+            }
+
+            details = `<span class="${teamClass}">${teamName}</span> <b>${scorer}</b>`; 
+            extraHtml = assistStr + scoreStr;
             break;
           }
           case "shot": { if (e.result === "miss") return ""; icon = "🎯"; title = "Бросок"; details = `${playerName} (${teamName})`; break; }
