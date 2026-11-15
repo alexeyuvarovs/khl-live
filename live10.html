@@ -10,6 +10,7 @@
   :root { 
     --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3; --muted: #8b949e; 
     --home: #f85149; --visitor: #58a6ff; --goal-bg: rgba(35,134,54,0.15); --goal-border: #238636;
+    --win: #238636; --draw: #d29922; --lose: #f85149;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Roboto Condensed', sans-serif; background: var(--bg); color: var(--text); padding-bottom: 60px; display: flex; flex-direction: column; min-height: 100vh; }
@@ -117,7 +118,7 @@
   .loading { text-align: center; color: var(--muted); padding: 40px; font-size: 15px; font-weight: 700; }
   .update-timer { text-align: center; font-size: 12px; color: #484f58; padding: 20px 0; font-weight: 700; }
 
-  /* Модалка игрока */
+  /* Модалка */
   .player-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
   .player-modal-inner { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 90%; max-width: 400px; padding: 24px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
   .close-btn { position: absolute; top: 10px; right: 15px; background: none; border: none; color: var(--muted); font-size: 28px; cursor: pointer; z-index: 10; }
@@ -131,30 +132,23 @@
   .pm-cell-title { color: var(--muted); font-size: 11px; text-transform: uppercase; font-weight: 700; }
   .pm-cell-val { font-size: 20px; font-weight: 900; color: #fff; margin-top: 2px; }
 
-  /* Плавающий чат */
-  .chat-fab { position: fixed; bottom: 60px; right: 20px; width: 60px; height: 60px; background: var(--visitor); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 28px; cursor: pointer; box-shadow: 0 4px 15px rgba(88,166,255,0.4); z-index: 9998; transition: transform 0.2s; }
-  .chat-fab:hover { transform: scale(1.1); }
-  .chat-window { position: fixed; bottom: 130px; right: 20px; width: 350px; height: 450px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; display: none; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 9999; overflow: hidden; animation: slideUp 0.3s ease-out; }
-  .chat-window.open { display: flex; }
-  @media (max-width: 600px) { .chat-window { width: calc(100% - 40px); right: 20px; bottom: 130px; height: 50vh; } }
-  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-  .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: #21262d; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
-  .chat-header-buttons { display: flex; gap: 10px; align-items: center; }
-  .chat-nick-btn { background: none; border: none; color: var(--visitor); cursor: pointer; font-size: 11px; font-weight: 700; padding: 0; }
-  .chat-nick-btn:hover { text-decoration: underline; }
-  .chat-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; padding: 0 5px; }
-  .chat-close:hover { color: #fff; }
+  /* ЧАТ */
+  .chat-container { margin-top: 20px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; height: 400px; }
+  .chat-header { display: flex; justify-content: space-between; padding: 10px 15px; background: #21262d; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
+  .chat-online { color: var(--muted); font-size: 12px; }
   .chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .chat-loading { text-align: center; color: var(--muted); font-size: 13px; margin-top: 20px; }
   .chat-msg { display: flex; flex-direction: column; max-width: 85%; }
   .chat-msg.own { align-self: flex-end; align-items: flex-end; }
-  .chat-msg .msg-author { font-size: 11px; color: var(--muted); margin-bottom: 2px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+  .chat-msg .msg-author { font-size: 11px; color: var(--muted); margin-bottom: 2px; font-weight: 700; }
   .chat-msg .msg-bubble { background: #21262d; padding: 8px 12px; border-radius: 12px; border-bottom-left-radius: 2px; font-size: 14px; word-wrap: break-word; }
   .chat-msg.own .msg-bubble { background: #1f6feb; color: #fff; border-bottom-left-radius: 12px; border-bottom-right-radius: 2px; }
   .chat-msg .msg-time { font-size: 10px; color: #484f58; margin-top: 2px; }
-  .chat-input-wrap { display: flex; padding: 10px; background: #21262d; border-top: 1px solid var(--border); gap: 6px; }
-  .chat-input-wrap input { flex-grow: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: var(--text); font-family: inherit; font-size: 13px; }
+  .chat-input-wrap { display: flex; padding: 10px; background: #21262d; border-top: 1px solid var(--border); gap: 8px; }
+  .chat-input-wrap input { flex-grow: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; color: var(--text); font-family: inherit; font-size: 14px; }
   .chat-input-wrap input:focus { outline: none; border-color: var(--visitor); }
-  .chat-input-wrap button { background: var(--visitor); border: none; color: #fff; border-radius: 6px; padding: 0 12px; cursor: pointer; font-size: 16px; }
+  .chat-input-wrap button { background: var(--visitor); border: none; color: #fff; border-radius: 6px; padding: 0 15px; cursor: pointer; font-size: 18px; transition: background 0.2s; }
+  .chat-input-wrap button:hover { background: #409eff; }
 
   /* Бегущая строка */
   .ticker-wrap { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: #000; border-top: 1px solid #30363d; z-index: 99999; display: flex; overflow: hidden; align-items: center; }
@@ -191,7 +185,24 @@
 
 <div class="feed-container active" id="feed-container">
   <div id="feed" class="event-list"><div class="loading">Загрузка...</div></div>
-</div>
+  
+    <!-- Блок чата -->
+  <div class="chat-container" id="chat-container">
+    <div class="chat-header">
+      <span>💬 Чат болельщиков</span>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <span class="chat-online" id="chat-online">Live</span>
+        <button onclick="changeNick()" style="background:none; border:none; color:#58a6ff; cursor:pointer; font-size:12px; font-weight:700; padding:0;">Сменить ник</button>
+      </div>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-loading">Загрузка сообщений...</div>
+    </div>
+    <div class="chat-input-wrap">
+      <input type="text" id="chat-input" placeholder="Напишите что-нибудь..." maxlength="300" autocomplete="off">
+      <button id="chat-send" onclick="sendChatMessage()">➤</button>
+    </div>
+  </div>
 
 <div class="lineups-container" id="lineups-container"><div class="loading">Загрузка составов...</div></div>
 
@@ -226,25 +237,6 @@
       <div class="pm-cell"><div class="pm-cell-title">+/-</div><div class="pm-cell-val" id="pm-pm">0</div></div>
       <div class="pm-cell"><div class="pm-cell-title">Время</div><div class="pm-cell-val" id="pm-toi">00:00</div></div>
     </div>
-  </div>
-</div>
-
-<!-- Плавающий чат -->
-<div class="chat-fab" id="chat-fab" onclick="toggleChat()">💬</div>
-<div class="chat-window" id="chat-window">
-  <div class="chat-header">
-    <span>💬 Чат болельщиков</span>
-    <div class="chat-header-buttons">
-      <button onclick="changeNick()" class="chat-nick-btn">Сменить ник</button>
-      <button class="chat-close" onclick="toggleChat()">&times;</button>
-    </div>
-  </div>
-  <div class="chat-messages" id="chat-messages">
-    <div class="chat-loading">Загрузка...</div>
-  </div>
-  <div class="chat-input-wrap">
-    <input type="text" id="chat-input" placeholder="Напишите..." maxlength="300" autocomplete="off">
-    <button id="chat-send" onclick="sendChatMessage()">➤</button>
   </div>
 </div>
 
@@ -286,13 +278,11 @@ async function loadSeasonStats() { const s = await sb(`team_season?select=team,p
 
 async function loadRoster() {
   if (!currentGameid) return;
-  roster = {}; // Сбрасываем
   try {
     const identity = await sb(`identity?select=team,num,player,photo&or=(team.eq.${encodeURIComponent(homeTeam)},team.eq.${encodeURIComponent(visitorTeam)})`);
     if (identity) identity.forEach(p => { const numStr = cleanNum(p.num || ""); if (!numStr) return; const ab = p.team === homeTeam ? "A" : "B"; roster[`${ab}_${numStr}`] = { name: p.player.split(" ")[0], fullName: p.player, g: 0, a: 0, sog: 0, hits: 0, pm: 0, toi: "00:00", team: p.team, photo: p.photo }; });
     const players = await sb(`players_stats?gameid=eq.${currentGameid}`);
     if (players) players.forEach(p => { const numStr = cleanNum(p.num || p.jn || ""); if (!numStr) return; const ab = p.team === homeTeam ? "A" : "B"; const key = `${ab}_${numStr}`; if (!roster[key]) roster[key] = { name: p.player.split(" ")[0], fullName: p.player, team: p.team, photo: p.photo || null }; roster[key].g = p.g; roster[key].a = p.a; roster[key].sog = p.sog; roster[key].hits = p.hits; roster[key].pm = p.pm; roster[key].toi = p.toi; });
-    console.log("DEBUG roster keys:", Object.keys(roster).length);
   } catch (e) {}
 }
 
@@ -315,8 +305,8 @@ async function loadGoals() {
     });
   }
   Object.values(goalsData).forEach(g => { if (g.score_a !== undefined) scoreA = g.score_a; if (g.score_b !== undefined) scoreB = g.score_b; });
-  const sh = document.getElementById("score-home"); if(sh) sh.textContent = scoreA;
-  const sa = document.getElementById("score-away"); if(sa) sa.textContent = scoreB;
+  document.getElementById("score-home").textContent = scoreA;
+  document.getElementById("score-away").textContent = scoreB;
 }
 
 async function loadPenalties() { if (!currentGameid) return; const pens = await sb(`penalties?gameid=eq.${currentGameid}&select=period,time,minutes,reason,team,player`); penaltiesData = []; if (pens) penaltiesData = pens; }
@@ -350,33 +340,20 @@ async function loadFeed() {
       } else {
         const e = item.data;
         const isGoal = e.type === "goal", isA = e.team_ab === "A", teamClass = isA ? "team-a-text" : "team-b-text", teamName = isA ? homeTeam : visitorTeam;
-        
-        // Жесткий поиск игрока
-        const jnStr = String(e.jn || "").trim();
-        let pObj = roster[`${e.team_ab}_${jnStr}`];
-        if (!pObj) {
-          for (const key in roster) {
-            if (key.startsWith(e.team_ab + "_")) {
-              const keyNum = key.split("_")[1];
-              if (keyNum === jnStr || Number(keyNum) === Number(jnStr)) { pObj = roster[key]; break; }
-            }
-          }
-        }
         let playerName = "";
-        if (pObj) playerName = `<b class="player-link" onclick="showPlayerModal('${e.team_ab}', '${jnStr}')">${pObj.name}</b>`;
-        else if (jnStr) playerName = `№${jnStr}`;
-
+        if (e.jn && e.jn !== "0") { const pObj = roster[`${e.team_ab}_${cleanNum(e.jn)}`]; if (pObj) playerName = `<b class="player-link" onclick="showPlayerModal('${e.team_ab}', '${cleanNum(e.jn)}')">${pObj.name}</b>`; else playerName = `№${e.jn}`; }
         let icon = "", title = "", details = "", extraHtml = "";
         switch (e.type) {
           case "goal": {
-            icon = "🚨"; title = "ГОЛ!"; 
-            const ex = parseExtra(e.extra);
-            const scoreA = ex.scA !== undefined ? ex.scA : '';
-            const scoreB = ex.scB !== undefined ? ex.scB : '';
-            let scoreStr = "";
-            if (scoreA !== '' && scoreB !== '') { scoreStr = `<div class="score-after">Счёт: ${scoreA} : ${scoreB}</div>`; }
-            details = `<span class="${teamClass}">${teamName}</span> ${playerName}`; 
-            extraHtml = scoreStr;
+            icon = "🚨"; title = "ГОЛ!"; details = `<span class="${teamClass}">${teamName}</span> ${playerName}`; 
+            const gKey = `${e.period}_${e.time_ms}`; 
+            if (goalsData[gKey]) { 
+                const g = goalsData[gKey]; 
+                const a1 = g.assist_1 ? `<b>${g.assist_1.split(" ")[0]}</b>` : null; 
+                const a2 = g.assist_2 ? `<b>${g.assist_2.split(" ")[0]}</b>` : null; 
+                if (a1 || a2) extraHtml = `<div class="assists">Ассисты: ${[a1, a2].filter(Boolean).join(', ')}</div>`; 
+                if (g.score_a !== undefined) extraHtml += `<div class="score-after">Счёт: ${g.score_a} : ${g.score_b}</div>`; 
+            } 
             break;
           }
           case "shot": { if (e.result === "miss") return ""; icon = "🎯"; title = "Бросок"; details = `${playerName} (${teamName})`; break; }
@@ -436,6 +413,34 @@ function updateHeaderStats(events, maxPeriod) {
   const aSog = document.getElementById("away-sog"); if(aSog) aSog.textContent = sB;
   if (currentMatchData?.winner) { const tp = document.getElementById("tv-period"); if(tp) tp.textContent = "Матч завершён"; const ld = document.getElementById("live-dot"); if(ld) ld.style.display = "none"; }
   else { const perNames = { 1: "1ST", 2: "2ND", 3: "3RD", 4: "OT" }; const tp = document.getElementById("tv-period"); if(tp) tp.textContent = perNames[maxPeriod] || `${maxPeriod}-й период`; const ld = document.getElementById("live-dot"); if(ld) ld.style.display = "inline-block"; }
+}
+
+function renderTimeline() {
+  const container = document.getElementById("timeline-container"), bar = document.getElementById("timeline-bar"), labels = document.getElementById("tl-labels");
+  if(!container || !bar) return;
+  const goals = Object.values(goalsData).sort((a, b) => a.period !== b.period ? a.period - b.period : parseTimeStr(a.time_ms) - parseTimeStr(b.time_ms));
+  if (goals.length === 0) { container.style.display = "none"; return; } 
+  container.style.display = "block";
+  const maxPeriod = Math.max(...goals.map(g => Number(g.period))), hasOT = maxPeriod >= 4, totalMin = hasOT ? 65 : 60, numP = hasOT ? 4 : 3;
+  bar.innerHTML = ''; 
+  for (let i = 1; i < numP; i++) { 
+    const div = document.createElement("div"); 
+    div.style.cssText = "position:absolute;top:0;bottom:0;width:1px;background:#30363d;"; 
+    div.style.left = (i * (100 / numP)) + "%"; 
+    bar.appendChild(div); 
+  }
+  if(labels) labels.innerHTML = hasOT ? "<span>0'</span><span>20'</span><span>40'</span><span>60'</span><span>65'</span>" : "<span>0'</span><span>20'</span><span>40'</span><span>60'</span>";
+  goals.forEach(g => { 
+    const minP = parseTimeStr(g.time_ms) / 60, absM = (Number(g.period) - 1) * 20 + minP; 
+    let pos = (absM / totalMin) * 100; 
+    if (isNaN(pos)) pos = 50; 
+    pos = Math.min(97, Math.max(3, pos)); 
+    const color = g.team === homeTeam ? "#f85149" : "#58a6ff"; 
+    const marker = document.createElement("div"); 
+    marker.style.cssText = `position:absolute;top:50%;transform:translate(-50%,-50%);height:18px;min-width:24px;padding:0 4px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:white;cursor:pointer;left:${pos}%;background:${color};border:2px solid #0d1117;z-index:10;`; 
+    marker.textContent = `${g.score_a}:${g.score_b}`; 
+    bar.appendChild(marker); 
+  });
 }
 
 async function loadShots() { if (!currentGameid) return; allShots = await sb(`shots?gameid=eq.${currentGameid}`) || []; buildPlayerFilter(); renderRink(); }
@@ -644,11 +649,6 @@ async function loadNews() {
 }
 
 // --- ЛОГИКА ЧАТА ---
-function toggleChat() {
-  const win = document.getElementById("chat-window");
-  if (win) win.classList.toggle("open");
-}
-
 async function loadChat() {
   if (!currentGameid) return;
   try {
@@ -670,7 +670,9 @@ async function loadChat() {
         const isOwn = m.username === getMyChatName();
         const time = new Date(m.created_at).toLocaleTimeString("ru-RU", { hour: '2-digit', minute: '2-digit' });
         const safeText = m.message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        // Кнопка удаления (показываем всем, но работает только у админа)
         const delBtn = `<span onclick="deleteChatMsg(${m.id})" style="cursor:pointer; color:#f85149; font-size:10px; margin-left:5px;" title="Удалить">❌</span>`;
+        
         return `<div class="chat-msg ${isOwn ? 'own' : ''}">
           <div class="msg-author">${m.username || 'Болельщик'} ${delBtn}</div>
           <div class="msg-bubble">${safeText}</div>
@@ -713,6 +715,7 @@ async function sendChatMessage() {
     });
 
     if (!r.ok) throw new Error("Ошибка отправки");
+    
     input.value = "";
     await loadChat();
   } catch (e) {
@@ -726,28 +729,6 @@ function getMyChatName() {
   return localStorage.getItem("chatName");
 }
 
-function changeNick() {
-  const newName = prompt("Введите ваш новый ник (до 20 символов):", getMyChatName() || "Болельщик");
-  if (newName && newName.trim().length > 0) {
-    localStorage.setItem("chatName", newName.trim().substring(0, 20));
-    alert("Ник изменен на: " + newName.trim());
-    loadChat();
-  }
-}
-
-async function deleteChatMsg(id) {
-  if (!confirm("Удалить это сообщение?")) return;
-  try {
-    const r = await fetch(`${SUPABASE}/rest/v1/chat_messages?id=eq.${id}`, {
-      method: "DELETE",
-      headers: { "apikey": KEY, "Authorization": "Bearer " + KEY }
-    });
-    if (!r.ok) throw new Error("Нет прав на удаление");
-    chatLastId = 0;
-    loadChat();
-  } catch (e) { alert("Ошибка удаления: " + e.message); }
-}
-
 function initChat() {
   const input = document.getElementById("chat-input");
   if (input) {
@@ -757,6 +738,43 @@ function initChat() {
   }
   loadChat();
   setInterval(loadChat, 5000);
+}
+// Смена ника
+function changeNick() {
+  const newName = prompt("Введите ваш новый ник (до 20 символов):", getMyChatName() || "Болельщик");
+  if (newName && newName.trim().length > 0) {
+    localStorage.setItem("chatName", newName.trim().substring(0, 20));
+    alert("Ник изменен на: " + newName.trim());
+    loadChat(); // Перезагружаем чат, чтобы увидеть свои сообщения под новым ником
+  }
+}
+
+// Удаление сообщения (работает только для админа через service_role, 
+// но с anon-ключом выдаст ошибку, если мы не добавили политику)
+async function deleteChatMsg(id) {
+  if (!confirm("Удалить это сообщение?")) return;
+  
+  try {
+    const r = await fetch(`${SUPABASE}/rest/v1/chat_messages?id=eq.${id}`, {
+      method: "DELETE",
+      headers: {
+        "apikey": KEY,
+        "Authorization": "Bearer " + KEY
+      }
+    });
+
+    if (!r.ok) {
+      // Если anon-ключ не может удалять (а он не может), выбрасываем ошибку
+      const err = await r.json();
+      throw new Error(err.message || "Нет прав на удаление");
+    }
+    
+    // Если удалили, обновляем чат
+    chatLastId = 0; // Сбрасываем, чтобы перерисовать
+    loadChat();
+  } catch (e) {
+    alert("Ошибка удаления: " + e.message + "\n(Удалять сообщения может только админ через service_role)");
+  }
 }
 
 async function initApp() { 
