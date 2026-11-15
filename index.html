@@ -131,17 +131,34 @@ async function loadMatches() {
   try {
     const matches = await sb(`matches?select=gameid,date,home,visitor,home_goals,visitor_goals,winner&order=date.desc,gameid.desc&limit=15`);
     if (!matches || matches.length === 0) { list.innerHTML = '<div class="loading">Нет матчей в базе.</div>'; mainBtn.style.display = "none"; return; }
-    const today = new Date(), todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
-    let activeMatch = matches.find(m => m.date === todayStr && m.winner === null) || matches[0];
-    let isLive = (activeMatch.date === todayStr && activeMatch.winner === null);
-    mainBtn.style.display = "block"; mainBtn.href = `live10.html?gameid=${activeMatch.gameid}`; mainBtn.className = isLive ? "main-btn live" : "main-btn";
+    
+    // Ищем первый матч, у которого еще нет победителя (это и есть LIVE или Скоро)
+    let activeMatch = matches.find(m => m.winner === null) || matches[0];
+    let isLive = (activeMatch.winner === null);
+    
+    mainBtn.style.display = "block"; 
+    mainBtn.href = `live10.html?gameid=${activeMatch.gameid}`; 
+    mainBtn.className = isLive ? "main-btn live" : "main-btn";
+    
     const aHome = TEAM_FULL[activeMatch.home] || activeMatch.home, aVis = TEAM_FULL[activeMatch.visitor] || activeMatch.visitor;
     mainBtn.innerHTML = isLive ? `🔴 Смотреть LIVE: ${aHome} — ${aVis}` : `▶ Смотреть последний матч: ${aHome} — ${aVis}`;
 
     list.innerHTML = matches.map(m => {
-      const isMlive = (m.date === todayStr && m.winner === null), score = (m.home_goals !== null && m.visitor_goals !== null) ? `${m.home_goals} : ${m.visitor_goals}` : "- : -";
+      const isMlive = (m.winner === null); // Если победителя нет — матч LIVE или Скоро
+      const score = (m.home_goals !== null && m.visitor_goals !== null) ? `${m.home_goals} : ${m.visitor_goals}` : "- : -";
       const homeName = TEAM_FULL[m.home] || m.home, visName = TEAM_FULL[m.visitor] || m.visitor;
-      return `<a href="live10.html?gameid=${m.gameid}" class="match-card ${isMlive ? 'is-live' : ''}"><div class="mc-team">${getLogoHtml(homeName)}<span class="mc-name">${homeName}</span></div><div class="mc-center"><div class="mc-score">${score}</div><div class="mc-status ${isMlive ? 'live-text' : ''}">${isMlive ? 'LIVE' : (m.winner ? 'Завершён' : 'Скоро')}</div></div><div class="mc-team away"><span class="mc-name">${visName}</span>${getLogoHtml(visName)}</div><div class="mc-date">${formatDate(m.date)}</div></a>`;
+      
+      let statusText = 'Скоро';
+      let statusClass = '';
+      if (isMlive) { 
+          statusText = 'LIVE'; 
+          statusClass = 'live-text'; 
+      }
+      else if (m.winner) { 
+          statusText = 'Завершён'; 
+      }
+      
+      return `<a href="live10.html?gameid=${m.gameid}" class="match-card ${isMlive ? 'is-live' : ''}"><div class="mc-team">${getLogoHtml(homeName)}<span class="mc-name">${homeName}</span></div><div class="mc-center"><div class="mc-score">${score}</div><div class="mc-status ${statusClass}">${statusText}</div></div><div class="mc-team away"><span class="mc-name">${visName}</span>${getLogoHtml(visName)}</div><div class="mc-date">${formatDate(m.date)}</div></a>`;
     }).join("");
   } catch (e) { list.innerHTML = `<div class="error-msg">Ошибка: ${e.message}</div>`; }
 }
