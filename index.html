@@ -162,39 +162,49 @@ async function loadMatches() {
   // Добавил "Драконы" на случай, если в базе остался старый вариант
   const TEAM_FULL = { "АВТ": "Автомобилист", "АКБ": "Ак Барс", "АДМ": "Адмирал", "АМР": "Амур", "АВГ": "Авангард", "БАР": "Барыс", "ДИН": "Динамо М", "ДМН": "Динамо Мн", "ЛАД": "Лада", "ЛОК": "Локомотив", "ММГ": "Металлург Мг", "НХК": "Нефтехимик", "САЛ": "Салават Юлаев", "СЕВ": "Северсталь", "СИБ": "Сибирь", "СКА": "СКА", "СПА": "Спартак", "ТОР": "Торпедо НН", "ТРК": "Трактор", "СОЧ": "ХК Сочи", "ЦСК": "ЦСКА", "ДРК": "Шанхай Дрэгонс", "ШДР": "Шанхай Дрэгонс", "Драконы": "Шанхай Дрэгонс" };
   const list = document.getElementById("matches-list"), mainBtn = document.getElementById("main-btn");
-  
+
   try {
     const matches = await sb(`matches?select=gameid,date,home,visitor,home_goals,visitor_goals,winner,status&order=date.desc,gameid.desc&limit=15`);
     if (!matches || matches.length === 0) { list.innerHTML = '<div class="loading">Нет матчей в базе.</div>'; mainBtn.style.display = "none"; return; }
-    
-    // Активный матч: сначала ищем live по статусу или голам, затем soon, иначе первый в списке
-    let activeMatch = matches.find(m => m.status === 'live' || m.home_goals > 0 || m.visitor_goals > 0) || matches.find(m => m.status === 'soon') || matches[0];
-    let isLive = (activeMatch.status === 'live' || activeMatch.home_goals > 0 || activeMatch.visitor_goals > 0);
-    
-    mainBtn.style.display = "block"; 
-    mainBtn.href = `live10.html?gameid=${activeMatch.gameid}`; 
+
+    // Сегодняшняя дата по МСК (не по UTC — вечером UTC отстаёт на 3 часа)
+    const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Moscow' });
+
+    // Завершён: есть победитель, статус finished, ИЛИ дата матча в прошлом.
+    // Строка вида "2026-11-24" или "2026-11-24T19:30:00+00:00" обе
+    // сравниваются с "2026-11-25" корректно.
+    const isFinished = m => m.winner || m.status === 'finished' || (m.date && m.date < today);
+
+    // Активный матч: настоящий live (сегодняшний), затем soon, иначе первый в списке
+    let activeMatch = matches.find(m => m.status === 'live' && m.date >= today)
+                   || matches.find(m => m.status === 'soon' && m.date >= today)
+                   || matches[0];
+    let isLive = activeMatch.status === 'live' && activeMatch.date >= today;
+
+    mainBtn.style.display = "block";
+    mainBtn.href = `live10.html?gameid=${activeMatch.gameid}`;
     mainBtn.className = isLive ? "main-btn live" : "main-btn";
-    
+
     const aHome = TEAM_FULL[activeMatch.home] || activeMatch.home, aVis = TEAM_FULL[activeMatch.visitor] || activeMatch.visitor;
     mainBtn.innerHTML = isLive ? `🔴 Смотреть LIVE: ${aHome} — ${aVis}` : `▶ Смотреть матч: ${aHome} — ${aVis}`;
 
     list.innerHTML = matches.map(m => {
       const score = (m.home_goals !== null && m.visitor_goals !== null) ? `${m.home_goals} : ${m.visitor_goals}` : "- : -";
       const homeName = TEAM_FULL[m.home] || m.home, visName = TEAM_FULL[m.visitor] || m.visitor;
-      
+
       let statusText = 'Скоро', statusClass = '';
-      if (m.winner || m.status === 'finished') { 
-        statusText = 'Завершён'; 
-      } else if (m.status === 'live' || m.home_goals > 0 || m.visitor_goals > 0) { 
-        statusText = 'LIVE'; statusClass = 'live-text'; 
+      if (isFinished(m)) {
+        statusText = 'Завершён';
+      } else if (m.status === 'live' || m.home_goals > 0 || m.visitor_goals > 0) {
+        statusText = 'LIVE'; statusClass = 'live-text';
       }
-      
+
       return `<a href="live10.html?gameid=${m.gameid}" class="match-card ${statusText === 'LIVE' ? 'is-live' : ''}"><div class="mc-team">${getLogoHtml(homeName)}<span class="mc-name">${homeName}</span></div><div class="mc-center"><div class="mc-score">${score}</div><div class="mc-status ${statusClass}">${statusText}</div></div><div class="mc-team away"><span class="mc-name">${visName}</span>${getLogoHtml(visName)}</div><div class="mc-date">${formatDate(m.date)}</div></a>`;
     }).join("");
-    
+
     initVote(activeMatch.gameid, aHome, aVis);
-    
-  } catch (e) { list.innerHTML = `<div class="error-message">Ошибка: ${e.message}</div>`; }
+
+  } catch (e) { list.innerHTML = `<div class="error-msg">Ошибка: ${e.message}</div>`; }
 }
 
 async function loadStandings() {
