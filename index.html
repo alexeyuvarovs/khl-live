@@ -167,15 +167,15 @@ async function loadMatches() {
     const matches = await sb(`matches?select=gameid,date,home,visitor,home_goals,visitor_goals,winner,status&order=date.desc,gameid.desc&limit=15`);
     if (!matches || matches.length === 0) { list.innerHTML = '<div class="loading">Нет матчей в базе.</div>'; mainBtn.style.display = "none"; return; }
 
-    // Сегодняшняя дата по МСК (не по UTC — вечером UTC отстаёт на 3 часа)
+    // Сегодняшняя дата по МСК, а не по UTC браузера:
+    // после полуночи МСК toISOString() ещё до 03:00 даёт «вчерашний» день
     const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Moscow' });
 
-    // Завершён: есть победитель, статус finished, ИЛИ дата матча в прошлом.
-    // Строка вида "2026-11-24" или "2026-11-24T19:30:00+00:00" обе
-    // сравниваются с "2026-11-25" корректно.
+    // Завершён: есть победитель, статус finished, ИЛИ дата матча в прошлом
     const isFinished = m => m.winner || m.status === 'finished' || (m.date && m.date < today);
 
-    // Активный матч: настоящий live (сегодняшний), затем soon, иначе первый в списке
+    // Активный матч: настоящий live (сегодняшний), затем soon (сегодняшний), иначе первый в списке.
+    // Live определяем только по статусу, а не по голам — иначе вчерашний матч с голами «краснеет»
     let activeMatch = matches.find(m => m.status === 'live' && m.date >= today)
                    || matches.find(m => m.status === 'soon' && m.date >= today)
                    || matches[0];
@@ -206,6 +206,7 @@ async function loadMatches() {
 
   } catch (e) { list.innerHTML = `<div class="error-msg">Ошибка: ${e.message}</div>`; }
 }
+
 
 async function loadStandings() {
   const tableWest = document.getElementById("table-west");
